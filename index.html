@@ -425,13 +425,13 @@
             
             const dualBarOption = {
                 tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                legend: { bottom: 0 },
-                grid: { left: '5%', right: '5%', top: '10%', bottom: '20%', containLabel: true },
+                legend: { bottom: 0, textStyle: { fontSize: 10 } },
+                grid: { left: '5%', right: '5%', top: '10%', bottom: '25%', containLabel: true },
                 xAxis: { type: 'value', max: 5 },
                 yAxis: { type: 'category', data: ['系統熟練度'] },
                 series: [
-                    { name: '教師自評(T1)', type: 'bar', data: [calcAvg(filteredData, 'T1')], itemStyle: { color: '#3b82f6', borderRadius: 4 } },
-                    { name: '學員評估(S4)', type: 'bar', data: [calcAvg(filteredData, 'S4')], itemStyle: { color: '#ec4899', borderRadius: 4 } }
+                    { name: 'T1 教師自評熟練度', type: 'bar', data: [calcAvg(filteredData, 'T1')], itemStyle: { color: '#3b82f6', borderRadius: 4 } },
+                    { name: 'S4 學員評估教師熟練度', type: 'bar', data: [calcAvg(filteredData, 'S4')], itemStyle: { color: '#ec4899', borderRadius: 4 } }
                 ]
             };
 
@@ -441,7 +441,7 @@
                 const counts = countScores(filteredData, k);
                 const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
                 return {
-                    name: qMap[k],
+                    name: `(${k}) ${qMap[k]}`,
                     s1: (counts[1]/total*100), s2: (counts[2]/total*100), s3: (counts[3]/total*100),
                     s4: (counts[4]/total*100), s5: (counts[5]/total*100)
                 };
@@ -706,12 +706,21 @@
                                 本區塊以 D&M 資訊系統成功模型為主要分析架構，並納入流程適配概念，從系統品質、資訊品質、服務品質出發，進一步檢視評核流程順暢度、教師操作認知落差，以及系統最終帶來的行政減量、歷程保存與學習管理價值。
                             </div>
                             
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+                            {/* [修改點] 將 lg:grid-cols-3 改為 lg:grid-cols-2，讓卡片有更多空間 */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                                 {/* Card 4-1 */}
                                 <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col">
                                     <h3 className="font-bold text-gray-800 border-b pb-2 mb-2">4-1. 系統體質健康度 (D&M)</h3>
-                                    <p className="text-xs text-gray-500 mb-1">診斷系統、資訊與服務三大品質表現</p>
-                                    <p className="text-[11px] text-gray-400 mb-2">* 數值計算：系統(Q1,Q2均分)、資訊(Q3,Q4,S1均分)、服務(T7,S5均分)</p>
+                                    <p className="text-xs text-gray-500 mb-2">診斷系統、資訊與服務三大品質表現</p>
+                                    
+                                    {/* [修改點] 新增簡短題目說明，幫助理解 */}
+                                    <div className="text-[11px] text-gray-500 mb-2 bg-gray-50 p-2.5 rounded-lg border border-gray-100 leading-relaxed">
+                                        <span className="font-bold text-gray-700">數值計算方式：</span><br/>
+                                        • <span className="font-semibold text-gray-600">系統品質：</span>Q1(操作介面)、Q2(系統穩定) 均分<br/>
+                                        • <span className="font-semibold text-gray-600">資訊品質：</span>Q3(查詢方便)、Q4(掌握進度)、S1(查閱回饋) 均分<br/>
+                                        • <span className="font-semibold text-gray-600">服務品質：</span>T7(教師獲協助)、S5(學員獲協助) 均分
+                                    </div>
+
                                     <div className="flex-grow min-h-[250px]">
                                         <ReactECharts option={radarOption} />
                                     </div>
@@ -732,7 +741,8 @@
                                 </div>
 
                                 {/* Card 4-3 */}
-                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col">
+                                {/* [修改點] 加上 lg:col-span-2 讓這張卡片展開佔滿兩格的寬度 */}
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col lg:col-span-2">
                                     <h3 className="font-bold text-gray-800 border-b pb-2 mb-2">4-3. 系統淨效益與核心價值</h3>
                                     <p className="text-xs text-gray-500 mb-2">評估行政減量、歷程保存與自我管理效益</p>
                                     <div className="flex-grow min-h-[250px]">

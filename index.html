@@ -72,7 +72,7 @@
         // 產生模擬資料
         const generateMockData = () => {
             const professions = ["醫師", "藥事", "醫事放射", "醫事檢驗", "護理", "營養", "呼吸治療", "聽力", "物理治療", "職能治療", "臨床心理", "語言治療"];
-            const roles = ["臨床教師", "受訓學員"];
+            const roles = ["臨床教師", "學員"];
             const frequencies = ["重度", "經常", "偶爾", "極少"];
             
             let surveyData = [];
@@ -95,7 +95,7 @@
                     row.Q2 = Math.min(5, row.Q2 + 1);
                 }
 
-                if(role === "受訓學員") {
+                if(role === "學員") {
                     row.S1 = randScore(); row.S2 = randScore(); row.S3 = randScore(); row.S4 = randScore(); row.S5 = randScore();
                 } else {
                     row.T1 = randScore(); row.T2 = randScore(); row.T3 = randScore(); row.T7 = randScore();
@@ -110,12 +110,10 @@
                 surveyData.push(row);
             }
 
+            // 修改為對應截圖中的 "年度" 欄位名稱
             const historyData = [
-                { "年份": "111年", "Q5": 3.6, "Q2": 3.2 },
-                { "年份": "112年", "Q5": 3.8, "Q2": 3.5 },
-                { "年份": "113年", "Q5": 4.1, "Q2": 3.9 },
-                { "年份": "114年", "Q5": 4.3, "Q2": 4.1 },
-                { "年份": "115年", "Q5": 4.5, "Q2": 4.4 },
+                { "年度": 112, "Q5": 3.71, "Q2": 3.62 },
+                { "年度": 113, "Q5": 3.86, "Q2": 3.87 }
             ];
 
             return { surveyData, questionMap: QUESTION_MAP, historyData };
@@ -236,6 +234,31 @@
                 });
             }, [rawData, filters]);
 
+            // 歷年趨勢資料 (Hook 必須放在 early return 之前)
+            const combinedTrendData = useMemo(() => {
+                if (!rawData || !rawData.historyData) return [];
+                
+                // 取出歷年資料，過濾掉可能不小心寫入的114年舊資料 (注意這裡改為 '年度')
+                const pastData = rawData.historyData.filter(d => !String(d['年度']).includes('114'));
+                
+                // 計算當前這份問卷的 Q2, Q5 平均數
+                const currentQ5 = parseFloat(calcAvg(filteredData, 'Q5'));
+                const currentQ2 = parseFloat(calcAvg(filteredData, 'Q2'));
+                
+                // 將原始資料整理格式，自動加上 "年" 字以利圖表顯示
+                const formattedPastData = pastData.map(d => ({
+                    label: String(d['年度']).includes('年') ? d['年度'] : `${d['年度']}年`,
+                    Q5: d['Q5'],
+                    Q2: d['Q2']
+                }));
+                
+                // 將「本期」動態加入
+                return [
+                    ...formattedPastData,
+                    { label: '114年(本期)', Q5: currentQ5 || 0, Q2: currentQ2 || 0 }
+                ];
+            }, [rawData, filteredData]);
+
             if (loading) return <div className="flex h-screen items-center justify-center text-xl text-blue-600 font-bold">載入資料中，請稍候...</div>;
             if (error) return <div className="flex h-screen items-center justify-center text-xl text-red-600">發生錯誤: {error}</div>;
 
@@ -249,11 +272,13 @@
                 tooltip: { trigger: 'axis' },
                 legend: { data: ['整體滿意度 (Q5)', '系統穩定度 (Q2)'], bottom: 0 },
                 grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
-                xAxis: { type: 'category', data: rawData.historyData.map(d => d['年份']), axisLine: { lineStyle: { color: '#9ca3af' } } },
+                // X 軸改為使用整理過後的 label
+                xAxis: { type: 'category', data: combinedTrendData.map(d => d.label), axisLine: { lineStyle: { color: '#9ca3af' } } },
                 yAxis: { type: 'value', min: 1, max: 5 },
                 series: [
-                    { name: '整體滿意度 (Q5)', type: 'line', data: rawData.historyData.map(d => d['Q5']), smooth: true, itemStyle: { color: '#3b82f6' }, lineStyle: { width: 3 } },
-                    { name: '系統穩定度 (Q2)', type: 'line', data: rawData.historyData.map(d => d['Q2']), smooth: true, itemStyle: { color: '#10b981' }, lineStyle: { width: 3 } }
+                    // 資料對應改為 d.Q5 和 d.Q2
+                    { name: '整體滿意度 (Q5)', type: 'line', data: combinedTrendData.map(d => d.Q5), smooth: true, itemStyle: { color: '#3b82f6' }, lineStyle: { width: 3 } },
+                    { name: '系統穩定度 (Q2)', type: 'line', data: combinedTrendData.map(d => d.Q2), smooth: true, itemStyle: { color: '#10b981' }, lineStyle: { width: 3 } }
                 ]
             };
 
@@ -426,14 +451,14 @@
             return (
                 <div className="min-h-screen pb-12">
                     {/* 頂部固定過濾器 */}
-                    <div className="sticky top-0 z-50 glass-header shadow-sm px-6 py-4 mb-6">
-                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div className="flex items-center gap-2 text-xl font-bold text-gray-800">
+                    <div className="sticky top-0 z-50 glass-header shadow-sm px-4 md:px-6 py-3 md:py-4 mb-4 md:mb-6">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+                            <div className="flex items-center gap-2 text-lg md:text-xl font-bold text-gray-800">
                                 <Icons.Filter />
                                 E-Portfolio 成效儀表板
                             </div>
-                            <div className="flex flex-wrap gap-4 items-center">
-                                <select className="border border-gray-300 rounded-md px-3 py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-4 items-stretch sm:items-center w-full md:w-auto">
+                                <select className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 md:py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
                                     value={filters.profession} onChange={e => setFilters({...filters, profession: e.target.value})}>
                                     <option value="全院總計">職類：全院總計</option>
                                     <option value="醫師">醫師</option>
@@ -449,13 +474,13 @@
                                     <option value="臨床心理">臨床心理</option>
                                     <option value="語言治療">語言治療</option>
                                 </select>
-                                <select className="border border-gray-300 rounded-md px-3 py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                <select className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 md:py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
                                     value={filters.role} onChange={e => setFilters({...filters, role: e.target.value})}>
                                     <option value="全部">身分：全部</option>
                                     <option value="臨床教師">臨床教師</option>
-                                    <option value="受訓學員">受訓學員</option>
+                                    <option value="學員">學員</option>
                                 </select>
-                                <select className="border border-gray-300 rounded-md px-3 py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
+                                <select className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 md:py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
                                     value={filters.frequency} onChange={e => setFilters({...filters, frequency: e.target.value})}>
                                     <option value="全部">頻率：全部</option>
                                     <option value="重度">重度</option>
@@ -467,86 +492,93 @@
                         </div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto px-6 space-y-8">
+                    <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-6 md:space-y-8">
                         
                         {/* 📍 區塊一：決策總覽與歷年趨勢 */}
                         <section>
-                            <h2 className="text-xl font-bold border-l-4 border-blue-600 pl-3 mb-4 text-gray-800">📍 決策總覽與歷年趨勢 (Executive Summary & Trends)</h2>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-blue-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 決策總覽與歷年趨勢 (Executive Summary & Trends)</h2>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 {/* KPIs */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
-                                        <div className="text-blue-500 mb-2"><Icons.Users /></div>
-                                        <div className="text-sm text-gray-500 font-medium">總填答人數</div>
-                                        <div className="text-3xl font-black text-gray-800">{filteredData.length}</div>
+                                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                                    <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
+                                        <div className="text-blue-500 mb-1 md:mb-2"><Icons.Users /></div>
+                                        <div className="text-xs md:text-sm text-gray-500 font-medium">總填答人數</div>
+                                        <div className="text-2xl md:text-3xl font-black text-gray-800">{filteredData.length}</div>
                                     </div>
-                                    <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
-                                        <div className="text-yellow-500 mb-2"><Icons.Star /></div>
-                                        <div className="text-sm text-gray-500 font-medium">整體滿意度 (Q5)</div>
-                                        <div className="text-3xl font-black text-gray-800">{calcAvg(filteredData, 'Q5')} <span className="text-sm">/ 5</span></div>
+                                    <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
+                                        <div className="text-yellow-500 mb-1 md:mb-2"><Icons.Star /></div>
+                                        <div className="text-xs md:text-sm text-gray-500 font-medium">整體滿意度 (Q5)</div>
+                                        <div className="text-2xl md:text-3xl font-black text-gray-800">{calcAvg(filteredData, 'Q5')} <span className="text-xs md:text-sm font-normal">/ 5</span></div>
                                     </div>
-                                    <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
-                                        <div className="text-green-500 mb-2"><Icons.Server /></div>
-                                        <div className="text-sm text-gray-500 font-medium">系統穩定度 (Q2)</div>
-                                        <div className="text-3xl font-black text-gray-800">{calcAvg(filteredData, 'Q2')} <span className="text-sm">/ 5</span></div>
+                                    <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
+                                        <div className="text-green-500 mb-1 md:mb-2"><Icons.Server /></div>
+                                        <div className="text-xs md:text-sm text-gray-500 font-medium">系統穩定度 (Q2)</div>
+                                        <div className="text-2xl md:text-3xl font-black text-gray-800">{calcAvg(filteredData, 'Q2')} <span className="text-xs md:text-sm font-normal">/ 5</span></div>
                                     </div>
-                                    <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
-                                        <div className="text-purple-500 mb-2"><Icons.Clock /></div>
-                                        <div className="text-sm text-gray-500 font-medium">行政減量有感 (T3)</div>
-                                        <div className="text-3xl font-black text-gray-800">{calcAvg(filteredData, 'T3')} <span className="text-sm">/ 5</span></div>
+                                    <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col items-center justify-center text-center">
+                                        <div className="text-purple-500 mb-1 md:mb-2"><Icons.Clock /></div>
+                                        <div className="text-xs md:text-sm text-gray-500 font-medium">行政減量有感 (T3)</div>
+                                        <div className="text-2xl md:text-3xl font-black text-gray-800">{calcAvg(filteredData, 'T3')} <span className="text-xs md:text-sm font-normal">/ 5</span></div>
                                     </div>
                                 </div>
                                 {/* 趨勢圖 */}
-                                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-4 border border-gray-100 h-64">
-                                    <div className="text-sm font-bold text-gray-700 mb-2">歷年關鍵指標趨勢</div>
-                                    <ReactECharts option={trendOption} />
+                                <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 min-h-[300px] md:h-64 flex flex-col">
+                                    <div className="text-sm font-bold text-gray-700 mb-1">歷年關鍵指標趨勢</div>
+                                    <div className="text-xs text-gray-400 mb-2">* 註：112、113年無法隨職類、身分、頻率選項而有所變化</div>
+                                    <div className="flex-grow min-h-0">
+                                        <ReactECharts option={trendOption} />
+                                    </div>
                                 </div>
                             </div>
                         </section>
 
                         {/* 📍 區塊二：關鍵驅動與分層解析 */}
                         <section>
-                            <h2 className="text-xl font-bold border-l-4 border-indigo-600 pl-3 mb-4 text-gray-800">📍 關鍵驅動與分層解析 (Driver & Segmentation)</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 h-80">
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-indigo-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 關鍵驅動與分層解析 (Driver & Segmentation)</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 min-h-[300px] md:h-80 flex flex-col">
                                     <div className="text-sm font-bold text-gray-700 mb-1">滿意度關鍵驅動因子 (與 Q5 的相關性)</div>
                                     <div className="text-xs text-gray-500 mb-2">數值越高代表該項目越能帶動整體滿意度</div>
-                                    <ReactECharts option={driverOption} />
+                                    <div className="flex-grow min-h-0">
+                                        <ReactECharts option={driverOption} />
+                                    </div>
                                 </div>
-                                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 h-80">
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 min-h-[300px] md:h-80 flex flex-col">
                                     <div className="text-sm font-bold text-gray-700 mb-1">使用頻率分層滿意度</div>
                                     <div className="text-xs text-gray-500 mb-2">檢視「越常用是否越滿意」(黏著度診斷)</div>
-                                    <ReactECharts option={segmentationOption} />
+                                    <div className="flex-grow min-h-0">
+                                        <ReactECharts option={segmentationOption} />
+                                    </div>
                                 </div>
                             </div>
                         </section>
 
                         {/* 📍 區塊三：全題項滿意度細部剖析 */}
                         <section>
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-xl font-bold border-l-4 border-teal-600 pl-3 text-gray-800">📍 全題項滿意度細部剖析</h2>
-                                <div className="bg-gray-200 p-1 rounded-lg flex text-sm">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 md:mb-4">
+                                <h2 className="text-lg md:text-xl font-bold border-l-4 border-teal-600 pl-3 text-gray-800">📍 全題項滿意度細部剖析</h2>
+                                <div className="bg-gray-200 p-1 rounded-lg flex text-sm w-full sm:w-auto">
                                     <button 
-                                        className={`px-4 py-1 rounded-md transition-colors ${sec3Mode === 'heatmap' ? 'bg-white shadow font-bold text-teal-700' : 'text-gray-600 hover:bg-gray-300'}`}
+                                        className={`flex-1 sm:flex-none px-3 md:px-4 py-1.5 md:py-1 rounded-md transition-colors ${sec3Mode === 'heatmap' ? 'bg-white shadow font-bold text-teal-700' : 'text-gray-600 hover:bg-gray-300'}`}
                                         onClick={() => setSec3Mode('heatmap')}
-                                    >均分對比 (Heatmap)</button>
+                                    >均分對比</button>
                                     <button 
-                                        className={`px-4 py-1 rounded-md transition-colors ${sec3Mode === 'stacked' ? 'bg-white shadow font-bold text-teal-700' : 'text-gray-600 hover:bg-gray-300'}`}
+                                        className={`flex-1 sm:flex-none px-3 md:px-4 py-1.5 md:py-1 rounded-md transition-colors ${sec3Mode === 'stacked' ? 'bg-white shadow font-bold text-teal-700' : 'text-gray-600 hover:bg-gray-300'}`}
                                         onClick={() => setSec3Mode('stacked')}
-                                    >情緒分佈 (Stacked Bar)</button>
+                                    >情緒分佈</button>
                                 </div>
                             </div>
                             
-                            <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 min-h-[400px]">
+                            <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 min-h-[400px]">
                                 {sec3Mode === 'heatmap' ? (
                                     <div className="overflow-x-auto custom-scrollbar">
                                         <table className="min-w-full text-left text-sm whitespace-nowrap">
                                             <thead className="border-b bg-gray-50 text-gray-700">
                                                 <tr>
-                                                    <th className="px-4 py-3 font-bold">題項</th>
-                                                    <th className="px-4 py-3 font-bold text-center">當前單位均分</th>
-                                                    <th className="px-4 py-3 font-bold text-center">全院均分</th>
-                                                    <th className="px-4 py-3 font-bold text-center">差異對比</th>
+                                                    <th className="px-3 md:px-4 py-3 font-bold">題項</th>
+                                                    <th className="px-3 md:px-4 py-3 font-bold text-center">當前單位均分</th>
+                                                    <th className="px-3 md:px-4 py-3 font-bold text-center">全院均分</th>
+                                                    <th className="px-3 md:px-4 py-3 font-bold text-center">差異對比</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -558,10 +590,10 @@
                                                     const isNegative = diff < 0;
                                                     return (
                                                         <tr key={k} className="border-b last:border-0 hover:bg-gray-50">
-                                                            <td className="px-4 py-3 font-medium text-gray-800">{`(${k}) ${qMap[k]}`}</td>
-                                                            <td className="px-4 py-3 text-center font-bold">{curAvg.toFixed(2)}</td>
-                                                            <td className="px-4 py-3 text-center text-gray-500">{allAvg.toFixed(2)}</td>
-                                                            <td className="px-4 py-3 text-center">
+                                                            <td className="px-3 md:px-4 py-3 font-medium text-gray-800">{`(${k}) ${qMap[k]}`}</td>
+                                                            <td className="px-3 md:px-4 py-3 text-center font-bold">{curAvg.toFixed(2)}</td>
+                                                            <td className="px-3 md:px-4 py-3 text-center text-gray-500">{allAvg.toFixed(2)}</td>
+                                                            <td className="px-3 md:px-4 py-3 text-center">
                                                                 <span className={`inline-block px-2 py-1 rounded text-xs font-bold ${isNegative ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                                                                     {diff > 0 ? '+' : ''}{diff}
                                                                 </span>
@@ -573,7 +605,7 @@
                                         </table>
                                     </div>
                                 ) : (
-                                    <div className="h-[500px]">
+                                    <div className="h-[400px] md:h-[500px]">
                                         <ReactECharts option={stackedOption} />
                                     </div>
                                 )}
@@ -582,12 +614,12 @@
 
                         {/* 📍 區塊四：理論模型與成效檢核 */}
                         <section>
-                            <h2 className="text-xl font-bold border-l-4 border-amber-500 pl-3 mb-4 text-gray-800">📍 理論模型與成效檢核 (D&M / Workflow Fit)</h2>
-                            <div className="text-sm text-gray-600 mb-4 ml-4">從系統體質、流程適配到最終價值，檢視 E-Portfolio 系統是否真正支持教學與學習。</div>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-amber-500 pl-3 mb-2 md:mb-4 text-gray-800">📍 理論模型與成效檢核 (D&M / Workflow Fit)</h2>
+                            <div className="text-sm text-gray-600 mb-4 ml-3 md:ml-4">從系統體質、流程適配到最終價值，檢視 E-Portfolio 系統是否真正支持教學與學習。</div>
                             
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
                                 {/* Card 4-1 */}
-                                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col">
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col">
                                     <h3 className="font-bold text-gray-800 border-b pb-2 mb-2">4-1. 系統體質健康度 (D&M)</h3>
                                     <p className="text-xs text-gray-500 mb-2">診斷系統、資訊與服務三大品質表現</p>
                                     <div className="flex-grow min-h-[250px]">
@@ -596,20 +628,20 @@
                                 </div>
                                 
                                 {/* Card 4-2 */}
-                                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col gap-4">
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col gap-4">
                                     <div>
                                         <h3 className="font-bold text-gray-800 border-b pb-2 mb-2">4-2. 臨床任務適配與認知落差</h3>
                                         <p className="text-xs text-gray-500 mb-1">衡量教師評核流程是否順暢 (T2)</p>
-                                        <div className="h-32"><ReactECharts option={gaugeOption} /></div>
+                                        <div className="h-40 md:h-32"><ReactECharts option={gaugeOption} /></div>
                                     </div>
                                     <div className="border-t pt-2">
                                         <p className="text-xs text-gray-500 mb-1">師生對系統熟練度認知落差</p>
-                                        <div className="h-32"><ReactECharts option={dualBarOption} /></div>
+                                        <div className="h-40 md:h-32"><ReactECharts option={dualBarOption} /></div>
                                     </div>
                                 </div>
 
                                 {/* Card 4-3 */}
-                                <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100 flex flex-col">
+                                <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 flex flex-col">
                                     <h3 className="font-bold text-gray-800 border-b pb-2 mb-2">4-3. 系統淨效益與核心價值</h3>
                                     <p className="text-xs text-gray-500 mb-2">評估行政減量、歷程保存與自我管理效益</p>
                                     <div className="flex-grow min-h-[250px]">
@@ -621,10 +653,10 @@
 
                         {/* 📍 區塊五：開放式回饋挖掘 */}
                         <section>
-                            <h2 className="text-xl font-bold border-l-4 border-rose-500 pl-3 mb-4 text-gray-800">📍 開放式回饋挖掘 (Voice of Customer)</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-rose-500 pl-3 mb-3 md:mb-4 text-gray-800">📍 開放式回饋挖掘 (Voice of Customer)</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                 {/* 標籤雲 (模擬) */}
-                                <div className="bg-white rounded-xl shadow-sm p-5 border border-gray-100 md:col-span-1">
+                                <div className="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 md:col-span-1">
                                     <h3 className="font-bold text-gray-700 mb-4">關鍵字分析 (點擊篩選)</h3>
                                     <div className="flex flex-wrap gap-2">
                                         <button 
@@ -658,22 +690,22 @@
                                 </div>
                                 
                                 {/* 留言瀑布流 */}
-                                <div className="bg-white rounded-xl shadow-sm p-0 border border-gray-100 md:col-span-2 overflow-hidden flex flex-col h-96">
-                                    <div className="p-4 border-b bg-gray-50 font-bold text-gray-700 flex justify-between items-center">
-                                        <span>回饋列表 {selectedKeyword && <span className="text-blue-600 font-normal text-sm ml-2">過濾: {selectedKeyword}</span>}</span>
+                                <div className="bg-white rounded-xl shadow-sm p-0 border border-gray-100 md:col-span-2 overflow-hidden flex flex-col h-[400px] md:h-96">
+                                    <div className="p-3 md:p-4 border-b bg-gray-50 font-bold text-gray-700 flex justify-between items-center text-sm md:text-base">
+                                        <span>回饋列表 {selectedKeyword && <span className="text-blue-600 font-normal text-xs md:text-sm ml-2">過濾: {selectedKeyword}</span>}</span>
                                     </div>
-                                    <div className="p-4 overflow-y-auto custom-scrollbar flex-grow space-y-3">
+                                    <div className="p-3 md:p-4 overflow-y-auto custom-scrollbar flex-grow space-y-3">
                                         {filteredData.filter(d => d[COLUMNS.FEEDBACK] && (!selectedKeyword || d[COLUMNS.FEEDBACK].includes(selectedKeyword))).length === 0 ? (
                                             <div className="text-gray-400 text-center py-8">目前無符合條件之回饋</div>
                                         ) : (
                                             filteredData.filter(d => d[COLUMNS.FEEDBACK] && (!selectedKeyword || d[COLUMNS.FEEDBACK].includes(selectedKeyword))).map((d, i) => (
                                                 <div key={i} className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-sm text-gray-700 shadow-sm">
-                                                    <div className="flex gap-2 mb-1 text-xs font-bold text-gray-500">
+                                                    <div className="flex flex-wrap gap-2 mb-2 text-xs font-bold text-gray-500">
                                                         <span className="bg-white px-2 py-0.5 rounded border">{d[COLUMNS.JOB_CATEGORY]}</span>
                                                         <span className="bg-white px-2 py-0.5 rounded border">{d[COLUMNS.ROLE]}</span>
                                                         <span className="ml-auto flex items-center gap-1 text-yellow-600"><Icons.Star/> Q5: {d['Q5']}</span>
                                                     </div>
-                                                    <p className="mt-2 leading-relaxed">{d[COLUMNS.FEEDBACK]}</p>
+                                                    <p className="mt-1 leading-relaxed">{d[COLUMNS.FEEDBACK]}</p>
                                                 </div>
                                             ))
                                         )}

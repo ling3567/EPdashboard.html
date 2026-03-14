@@ -123,29 +123,32 @@
         // 2. 共用工具函數
         // ==========================================
         const calcAvg = (data, key) => {
-            const valid = data.filter(d => typeof d[key] === 'number');
-            return valid.length ? (valid.reduce((sum, d) => sum + d[key], 0) / valid.length).toFixed(2) : "0.00";
+            const valid = data.filter(d => d[key] !== '' && d[key] !== null && !isNaN(parseFloat(d[key])));
+            return valid.length ? (valid.reduce((sum, d) => sum + parseFloat(d[key]), 0) / valid.length).toFixed(2) : "0.00";
         };
 
         // 計算皮爾森相關係數 (Pearson Correlation)
         const calcCorrelation = (data, keyX, keyY) => {
-            const valid = data.filter(d => typeof d[keyX] === 'number' && typeof d[keyY] === 'number');
-            if (valid.length === 0) return 0;
+            const valid = data.filter(d => d[keyX] !== '' && d[keyY] !== '' && d[keyX] !== null && d[keyY] !== null && !isNaN(parseFloat(d[keyX])) && !isNaN(parseFloat(d[keyY])));
+            if (valid.length <= 1) return null; // 若無足夠填答資料則不計算
             const n = valid.length;
             let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
             valid.forEach(d => {
-                const x = d[keyX], y = d[keyY];
+                const x = parseFloat(d[keyX]), y = parseFloat(d[keyY]);
                 sumX += x; sumY += y; sumXY += x * y; sumX2 += x * x; sumY2 += y * y;
             });
             const numerator = (n * sumXY) - (sumX * sumY);
             const denominator = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
-            if (denominator === 0) return 0;
+            if (denominator === 0) return null;
             return (numerator / denominator).toFixed(3);
         };
 
         const countScores = (data, key) => {
             const counts = {1:0, 2:0, 3:0, 4:0, 5:0};
-            data.filter(d => typeof d[key] === 'number').forEach(d => counts[d[key]]++);
+            data.filter(d => d[key] !== '' && d[key] !== null && !isNaN(parseFloat(d[key]))).forEach(d => {
+                const score = Math.round(parseFloat(d[key])); // 確保轉為整數
+                if(counts[score] !== undefined) counts[score]++;
+            });
             return counts;
         };
 
@@ -234,6 +237,22 @@
                 });
             }, [rawData, filters]);
 
+            // 動態取得試算表中實際存在的使用頻率
+            const uniqueFreqs = useMemo(() => {
+                if (!rawData) return [];
+                const freqs = Array.from(new Set(rawData.surveyData.map(d => d[COLUMNS.FREQUENCY]))).filter(f => f && String(f).trim() !== '');
+                const orderMap = { "極少": 1, "偶爾": 2, "經常": 3, "重度": 4 };
+                return freqs.sort((a, b) => {
+                    let valA = 99, valB = 99;
+                    for (let k in orderMap) {
+                        if (String(a).includes(k)) valA = orderMap[k];
+                        if (String(b).includes(k)) valB = orderMap[k];
+                    }
+                    if (valA !== 99 || valB !== 99) return valA - valB;
+                    return String(a).localeCompare(String(b));
+                });
+            }, [rawData]);
+
             // 歷年趨勢資料 (Hook 必須放在 early return 之前)
             const combinedTrendData = useMemo(() => {
                 if (!rawData || !rawData.historyData) return [];
@@ -282,40 +301,49 @@
                 ]
             };
 
-            // 區塊二：驅動分析 (長條圖)
-            const driverQuestions = ['Q1', 'Q2', 'T2', 'T3'];
-            const correlations = driverQuestions.map(q => ({
-                name: qMap[q],
-                val: parseFloat(calcCorrelation(filteredData, 'Q5', q))
-            })).sort((a, b) => a.val - b.val); // 升冪排序，讓畫出來由上而下遞增
+            // 區塊二：驅動分析 (長條圖) - 動態計算目前篩選身分「所有有效題目」的相關係數並附上題號
+            const correlations = Object.keys(qMap)
+                .filter(q => q !== 'Q5')
+                .map(q => {
+                    const r = calcCorrelation(filteredData, 'Q5', q);
+                    return {
+                        name: `(${q}) ${qMap[q]}`, // 加入題號
+                        val: r !== null ? parseFloat(r) : null
+                    };
+                })
+                .filter(c => c.val !== null && !isNaN(c.val)) // 濾除無效或該身分沒填答的題目
+                .sort((a, b) => a.val - b.val) // 升冪排序 (ECharts 由下往上畫)
+                .slice(-3); // 只擷取最後 3 筆資料 (即相關性最高的 Top 3)
 
             const driverOption = {
                 tooltip: { trigger: 'axis', formatter: '{b}: R = {c}' },
                 grid: { left: '3%', right: '10%', bottom: '3%', top: '3%', containLabel: true },
-                xAxis: { type: 'value', name: '相關係數 (r)', max: 1 },
-                yAxis: { type: 'category', data: correlations.map(c => c.name), axisLabel: { width: 120, overflow: 'break' } },
+                xAxis: { type: 'value', name: '相關係數 (r)', max: 1, min: 0 }, // 強制以 0 為起點，不顯示負值
+                yAxis: { type: 'category', data: correlations.map(c => c.name), axisLabel: { width: 140, overflow: 'truncate' } },
                 series: [{
                     type: 'bar',
                     data: correlations.map(c => c.val),
-                    itemStyle: { color: '#6366f1', borderRadius: [0, 4, 4, 0] },
+                    itemStyle: { 
+                        color: '#6366f1', // 統一顯示正向驅動的藍紫色
+                        borderRadius: [0, 4, 4, 0] 
+                    },
                     label: { show: true, position: 'right' }
                 }]
             };
 
-            // 區塊二：分層使用滿意度
-            const freqs = ["極少", "偶爾", "經常", "重度"];
-            const freqAvg = freqs.map(f => {
+            // 區塊二：分層使用滿意度 - 套用剛剛動態萃取出的唯一頻率
+            const freqAvg = uniqueFreqs.map(f => {
                 const d = filteredData.filter(x => x[COLUMNS.FREQUENCY] === f);
                 return d.length ? parseFloat(calcAvg(d, 'Q5')) : 0;
             });
             const segmentationOption = {
                 tooltip: { trigger: 'axis' },
-                grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
-                xAxis: { type: 'category', data: freqs },
+                grid: { left: '3%', right: '4%', bottom: '10%', top: '10%', containLabel: true },
+                xAxis: { type: 'category', data: uniqueFreqs, axisLabel: { interval: 0, rotate: uniqueFreqs.length > 4 ? 30 : 0 } },
                 yAxis: { type: 'value', min: 1, max: 5 },
                 series: [
-                    { type: 'bar', data: freqAvg, itemStyle: { color: '#8b5cf6', borderRadius: [4, 4, 0, 0] } },
-                    { type: 'line', data: freqAvg, smooth: true, itemStyle: { color: '#f59e0b' }, lineStyle: { width: 3 } }
+                    { name: '滿意度 (長條)', type: 'bar', data: freqAvg, itemStyle: { color: '#8b5cf6', borderRadius: [4, 4, 0, 0] } },
+                    { name: '趨勢線 (折線)', type: 'line', data: freqAvg, smooth: true, itemStyle: { color: '#f59e0b' }, lineStyle: { width: 3 } }
                 ]
             };
 
@@ -483,10 +511,9 @@
                                 <select className="w-full sm:w-auto border border-gray-300 rounded-md px-3 py-2 md:py-1.5 bg-white text-sm shadow-sm outline-none focus:ring-2 focus:ring-blue-500"
                                     value={filters.frequency} onChange={e => setFilters({...filters, frequency: e.target.value})}>
                                     <option value="全部">頻率：全部</option>
-                                    <option value="重度">重度</option>
-                                    <option value="經常">經常</option>
-                                    <option value="偶爾">偶爾</option>
-                                    <option value="極少">極少</option>
+                                    {uniqueFreqs.map(f => (
+                                        <option key={f} value={f}>{f}</option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -496,7 +523,7 @@
                         
                         {/* 📍 區塊一：決策總覽與歷年趨勢 */}
                         <section>
-                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-blue-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 決策總覽與歷年趨勢 (Executive Summary & Trends)</h2>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-blue-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 區塊一：決策總覽與歷年趨勢 (Executive Summary & Trends)</h2>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 {/* KPIs */}
                                 <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -534,7 +561,7 @@
 
                         {/* 📍 區塊二：關鍵驅動與分層解析 */}
                         <section>
-                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-indigo-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 關鍵驅動與分層解析 (Driver & Segmentation)</h2>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-indigo-600 pl-3 mb-3 md:mb-4 text-gray-800">📍 區塊二：關鍵驅動與分層解析 (Driver & Segmentation)</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                                 <div className="bg-white rounded-xl shadow-sm p-3 md:p-4 border border-gray-100 min-h-[300px] md:h-80 flex flex-col">
                                     <div className="text-sm font-bold text-gray-700 mb-1">滿意度關鍵驅動因子 (與 Q5 的相關性)</div>
@@ -556,7 +583,7 @@
                         {/* 📍 區塊三：全題項滿意度細部剖析 */}
                         <section>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 md:mb-4">
-                                <h2 className="text-lg md:text-xl font-bold border-l-4 border-teal-600 pl-3 text-gray-800">📍 全題項滿意度細部剖析</h2>
+                                <h2 className="text-lg md:text-xl font-bold border-l-4 border-teal-600 pl-3 text-gray-800">📍 區塊三：全題項滿意度細部剖析</h2>
                                 <div className="bg-gray-200 p-1 rounded-lg flex text-sm w-full sm:w-auto">
                                     <button 
                                         className={`flex-1 sm:flex-none px-3 md:px-4 py-1.5 md:py-1 rounded-md transition-colors ${sec3Mode === 'heatmap' ? 'bg-white shadow font-bold text-teal-700' : 'text-gray-600 hover:bg-gray-300'}`}
@@ -614,7 +641,7 @@
 
                         {/* 📍 區塊四：理論模型與成效檢核 */}
                         <section>
-                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-amber-500 pl-3 mb-2 md:mb-4 text-gray-800">📍 理論模型與成效檢核 (D&M / Workflow Fit)</h2>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-amber-500 pl-3 mb-2 md:mb-4 text-gray-800">📍 區塊四：理論模型與成效檢核 (D&M / Workflow Fit)</h2>
                             <div className="text-sm text-gray-600 mb-4 ml-3 md:ml-4">從系統體質、流程適配到最終價值，檢視 E-Portfolio 系統是否真正支持教學與學習。</div>
                             
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
@@ -653,7 +680,7 @@
 
                         {/* 📍 區塊五：開放式回饋挖掘 */}
                         <section>
-                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-rose-500 pl-3 mb-3 md:mb-4 text-gray-800">📍 開放式回饋挖掘 (Voice of Customer)</h2>
+                            <h2 className="text-lg md:text-xl font-bold border-l-4 border-rose-500 pl-3 mb-3 md:mb-4 text-gray-800">📍 區塊五：開放式回饋挖掘 (Voice of Customer)</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
                                 {/* 標籤雲 (模擬) */}
                                 <div className="bg-white rounded-xl shadow-sm p-4 md:p-5 border border-gray-100 md:col-span-1">

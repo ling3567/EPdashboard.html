@@ -290,7 +290,7 @@
             };
 
             // 區塊二：驅動分析 (長條圖)
-            // [修改點] 嚴格排除任何名稱包含 feedback 的欄位，避免干擾
+            // 嚴格排除任何名稱包含 feedback 的欄位，避免干擾
             const correlations = Object.keys(qMap)
                 .filter(q => q !== 'Q5' && !String(q).toLowerCase().includes('feedback'))
                 .map(q => {
@@ -453,19 +453,19 @@
             };
 
             // ==========================================
-            // 處理區塊三：每題獨立呈現卡片
+            // 處理區塊三：緊湊型 HTML/CSS 視覺化清單
             // ==========================================
             // 過濾掉 Feedback，只保留正常的題目 Q, S, T 等
             const validSec3Keys = Object.keys(qMap).filter(k => !String(k).toLowerCase().includes('feedback'));
 
-            // 準備每張卡片的圖表資料 (若該單位該題沒填答，分數為 0，則予以過濾隱藏)
-            const sec3CardsData = validSec3Keys.map(k => {
+            // 準備每列資料
+            const sec3ListData = validSec3Keys.map(k => {
                 const curAvg = parseFloat(calcAvg(filteredData, k));
                 const allAvg = parseFloat(calcAvg(allData, k));
                 
-                if (curAvg === 0) return null; // 隱藏沒資料的卡片
+                if (curAvg === 0) return null; // 隱藏沒資料的列
 
-                // 準備分佈圖資料 (轉換為百分比)
+                // 分佈資料
                 const counts = countScores(filteredData, k);
                 const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
                 const distData = [
@@ -479,46 +479,8 @@
                 const diff = (curAvg - allAvg).toFixed(2);
                 const isPositive = diff >= 0;
 
-                // 獨立的基準對比圖 (雙橫條)
-                const benchOption = {
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-                    grid: { left: '3%', right: '15%', bottom: '5%', top: '5%', containLabel: true },
-                    xAxis: { type: 'value', min: 0, max: 5, splitLine: { show: false } },
-                    yAxis: { type: 'category', data: ['全院基準', '當前單位'], axisLabel: { fontWeight: 'bold' }, axisLine: {show: false}, axisTick: {show: false} },
-                    series: [
-                        {
-                            type: 'bar',
-                            data: [
-                                { value: allAvg, itemStyle: { color: '#d1d5db', borderRadius: [0, 4, 4, 0] } },
-                                { value: curAvg, itemStyle: { color: '#0ea5e9', borderRadius: [0, 4, 4, 0] } }
-                            ],
-                            label: { show: true, position: 'right', formatter: '{c}', color: '#4b5563', fontWeight: 'bold' },
-                            barWidth: '40%'
-                        }
-                    ]
-                };
-
-                // 獨立的滿意度分佈圖 (5分制直條)
-                const distOption = {
-                    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, formatter: '{b}: {c}%' },
-                    grid: { left: '5%', right: '5%', bottom: '5%', top: '15%', containLabel: true },
-                    xAxis: { type: 'category', data: ['1分', '2分', '3分', '4分', '5分'], axisLabel: { interval: 0, fontSize: 10 }, axisTick: {show: false} },
-                    yAxis: { type: 'value', max: 100, splitLine: { lineStyle: { type: 'dashed' } }, axisLabel: { show: false } },
-                    series: [{
-                        type: 'bar',
-                        data: [
-                            { value: distData[0], itemStyle: { color: '#ef4444', borderRadius: [4, 4, 0, 0] } },
-                            { value: distData[1], itemStyle: { color: '#f87171', borderRadius: [4, 4, 0, 0] } },
-                            { value: distData[2], itemStyle: { color: '#d1d5db', borderRadius: [4, 4, 0, 0] } },
-                            { value: distData[3], itemStyle: { color: '#34d399', borderRadius: [4, 4, 0, 0] } },
-                            { value: distData[4], itemStyle: { color: '#10b981', borderRadius: [4, 4, 0, 0] } }
-                        ],
-                        label: { show: true, position: 'top', formatter: '{c}%', fontSize: 10, color: '#6b7280' }
-                    }]
-                };
-
-                return { k, text: qMap[k], curAvg, diff, isPositive, benchOption, distOption };
-            }).filter(item => item !== null); // 濾除 null 的卡片
+                return { k, text: qMap[k], curAvg, allAvg, diff, isPositive, distData };
+            }).filter(item => item !== null).sort((a, b) => a.curAvg - b.curAvg); // 預設由低分排到高分，突顯需改善項目
 
 
             return (
@@ -625,7 +587,7 @@
                             </div>
                         </section>
 
-                        {/* 📍 區塊三：全題項滿意度剖析 (改為單獨呈現網格) */}
+                        {/* 📍 區塊三：全題項滿意度剖析 (緊湊型清單) */}
                         <section>
                             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 md:mb-4">
                                 <h2 className="text-lg md:text-xl font-bold border-l-4 border-teal-600 pl-3 text-gray-800">📍 區塊三：全題項滿意度剖析</h2>
@@ -641,29 +603,70 @@
                                 </div>
                             </div>
                             
-                            {/* 單題獨立呈現的網格佈局 (Grid) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                                {sec3CardsData.map(item => (
-                                    <div key={item.k} className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-                                        {/* 卡片上半部：完整題目區塊 */}
-                                        <div className="bg-gray-50 p-4 border-b border-gray-100 flex-none">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded border border-teal-100">{item.k}</span>
-                                                {sec3Mode === 'benchmark' && (
-                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${item.isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {item.isPositive ? '+' : ''}{item.diff}
-                                                    </span>
-                                                )}
+                            {/* HTML/CSS 視覺化清單佈局 */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                {sec3ListData.length === 0 ? (
+                                    <div className="p-8 text-center text-gray-400">目前選擇的條件無對應題項資料</div>
+                                ) : (
+                                    <div className="flex flex-col">
+                                        {sec3ListData.map((item, index) => (
+                                            <div key={item.k} className={`flex flex-col lg:flex-row items-start lg:items-center p-4 ${index !== sec3ListData.length - 1 ? 'border-b border-gray-100' : ''} hover:bg-gray-50 transition-colors`}>
+                                                
+                                                {/* 左側：完整不截斷的題目 */}
+                                                <div className="flex-1 mb-4 lg:mb-0 lg:pr-8 w-full">
+                                                    <div className="text-sm text-gray-800 leading-relaxed font-medium break-words">
+                                                        <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs font-bold mr-2">{item.k}</span>
+                                                        {item.text}
+                                                    </div>
+                                                </div>
+
+                                                {/* 右側：精簡高效的微型視覺化 */}
+                                                <div className="w-full lg:w-[360px] xl:w-[450px] flex-none">
+                                                    {sec3Mode === 'benchmark' ? (
+                                                        /* --- 基準對比模式 (HTML 雙條圖) --- */
+                                                        <div className="space-y-2.5">
+                                                            <div className="flex items-center text-sm">
+                                                                <div className="w-16 text-gray-500 font-medium whitespace-nowrap">當前單位</div>
+                                                                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden flex mx-3">
+                                                                    <div className="bg-sky-500 h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${(item.curAvg / 5) * 100}%` }}></div>
+                                                                </div>
+                                                                <div className="w-20 text-right font-bold text-sky-600 flex justify-end items-center gap-1">
+                                                                    {item.curAvg.toFixed(2)}
+                                                                    <span className={`text-[10px] px-1 rounded ${item.isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                                        {item.isPositive ? '+' : ''}{item.diff}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center text-sm">
+                                                                <div className="w-16 text-gray-400 whitespace-nowrap">全院基準</div>
+                                                                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden flex mx-3">
+                                                                    <div className="bg-gray-300 h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${(item.allAvg / 5) * 100}%` }}></div>
+                                                                </div>
+                                                                <div className="w-20 text-right text-gray-400">{item.allAvg.toFixed(2)}</div>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        /* --- 滿意度分佈模式 (HTML 100% 堆疊條) --- */
+                                                        <div className="py-1">
+                                                            <div className="flex h-4 rounded-full overflow-hidden w-full mb-1.5 bg-gray-100">
+                                                                <div className="bg-red-500 hover:opacity-80 transition-all duration-700 ease-out cursor-pointer" style={{width: `${item.distData[0]}%`}} title={`非常不滿意: ${item.distData[0]}%`}></div>
+                                                                <div className="bg-red-400 hover:opacity-80 transition-all duration-700 ease-out cursor-pointer" style={{width: `${item.distData[1]}%`}} title={`不滿意: ${item.distData[1]}%`}></div>
+                                                                <div className="bg-gray-300 hover:opacity-80 transition-all duration-700 ease-out cursor-pointer" style={{width: `${item.distData[2]}%`}} title={`普通: ${item.distData[2]}%`}></div>
+                                                                <div className="bg-emerald-400 hover:opacity-80 transition-all duration-700 ease-out cursor-pointer" style={{width: `${item.distData[3]}%`}} title={`滿意: ${item.distData[3]}%`}></div>
+                                                                <div className="bg-emerald-500 hover:opacity-80 transition-all duration-700 ease-out cursor-pointer" style={{width: `${item.distData[4]}%`}} title={`非常滿意: ${item.distData[4]}%`}></div>
+                                                            </div>
+                                                            <div className="flex justify-between text-[11px] text-gray-400 px-1">
+                                                                <span>不滿意</span>
+                                                                <span>普通</span>
+                                                                <span>滿意</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            {/* 確保文字完整換行顯示，無截斷 */}
-                                            <div className="text-sm font-bold text-gray-800 leading-relaxed break-words">{item.text}</div>
-                                        </div>
-                                        {/* 卡片下半部：獨立圖表 */}
-                                        <div className="p-2 h-40 bg-white">
-                                            <ReactECharts option={sec3Mode === 'benchmark' ? item.benchOption : item.distOption} />
-                                        </div>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
                             </div>
                         </section>
 

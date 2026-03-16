@@ -70,7 +70,6 @@
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbywzmBAxZkOn41Qhrf2ubCt3e1f4hAELAAsxMky4RvYEas4tMIjuUYGXnYc3cRAaMxFLw/exec"; 
         const USE_MOCK_DATA = false;
 
-        // 【更新】將 T3, S2, S3 等題目加上明確的填答主詞
         const QUESTION_MAP = {
             "Q1": "操作介面簡單清楚",
             "Q2": "系統運作穩定",
@@ -237,18 +236,18 @@
 
             // 投影專用：高對比色彩定義
             const colors = {
-                primary: '#1d4ed8',    // 寶石藍 (Blue-700) 
-                primaryLight: '#bfdbfe', // 淺藍色 (Blue-200)
-                secondary: '#be123c',  // 深緋紅 (Rose-700)
+                primary: '#1d4ed8',   
+                primaryLight: '#bfdbfe',
+                secondary: '#be123c',  
                 secondaryLight: '#fecdd3', 
-                accent: '#c2410c',     // 深橘色 (Orange-700)
-                score1: '#b91c1c',     // 1分：暗紅
-                score2: '#ea580c',     // 2分：深橘
-                score3: '#ca8a04',     // 3分：深黃(土黃，投影才清楚)
-                score4: '#16a34a',     // 4分：草綠
-                score5: '#1d4ed8',     // 5分：寶石藍
-                grayBase: '#9ca3af',   // 網格線 (Gray-400)
-                grayText: '#374151'    // 軸線文字 (Gray-700)
+                accent: '#c2410c',     
+                score1: '#b91c1c',     
+                score2: '#ea580c',     
+                score3: '#ca8a04',     
+                score4: '#16a34a',     
+                score5: '#1d4ed8',     
+                grayBase: '#9ca3af',   
+                grayText: '#374151'    
             };
 
             useEffect(() => {
@@ -328,6 +327,10 @@
             const allData = rawData.surveyData;
             const qMap = rawData.questionMap;
 
+            // ================= 嚴格過濾題庫欄位 (防呆機制) =================
+            // 確保只有 Q1~Q5, S1~S5, T1~T7 這種格式的題號，才會進入量化分析，避免混入文字回饋欄位
+            const quantifiableKeys = Object.keys(qMap).filter(k => /^[QST]\d+$/.test(k));
+
             // ================= 區塊圖表設定 =================
             const trendOption = {
                 tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#9ca3af', textStyle: {color: '#111827', fontWeight: 'bold'} },
@@ -341,8 +344,8 @@
                 ]
             };
 
-            const correlations = Object.keys(qMap)
-                .filter(q => q !== 'Q5' && !String(q).toLowerCase().includes('feedback'))
+            const correlations = quantifiableKeys
+                .filter(q => q !== 'Q5')
                 .map(q => ({
                     name: `(${q}) ${qMap[q]}`,
                     val: (() => { const r = calcCorrelation(filteredData, 'Q5', q); return r !== null ? parseFloat(r) : null; })()
@@ -381,8 +384,8 @@
                 }]
             };
 
-            // 區塊三資料準備
-            const validSec3Keys = Object.keys(qMap).filter(k => !String(k).toLowerCase().includes('feedback'));
+            // 區塊三資料準備 (使用嚴格過濾後的題庫，並排除 Q5)
+            const validSec3Keys = quantifiableKeys.filter(k => k !== 'Q5');
             const sec3ListData = validSec3Keys.map(k => {
                 const curAvg = parseFloat(calcAvg(filteredData, k));
                 const allAvg = parseFloat(calcAvg(allData, k));
@@ -466,7 +469,6 @@
                 ]
             };
 
-            // 準備 4-3 的資料並計算滿意比例與平均分
             const stackData4_3 = ['T3', 'S2', 'S3'].map(k => {
                 const counts = countScores(filteredData, k);
                 const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
@@ -515,14 +517,81 @@
                 ]
             };
 
-            // === 新增：動態數據洞察邏輯 ===
+            // === 動態數據洞察邏輯 (深度升級與語氣修正) ===
             const currentQ5 = parseFloat(calcAvg(filteredData, 'Q5')).toFixed(2);
             const allQ5 = parseFloat(calcAvg(allData, 'Q5')).toFixed(2);
             const q5Diff = (currentQ5 - allQ5).toFixed(2);
-            const q5Comparison = q5Diff > 0 ? `高於全院平均 ${q5Diff} 分 📈` : q5Diff < 0 ? `低於全院平均 ${Math.abs(q5Diff)} 分 ⚠️` : `與全院平均持平`;
+            
+            // 讓整體表現的語氣更客觀
+            let q5Comparison = "";
+            if (q5Diff > 0.05) q5Comparison = `高於全院平均 ${q5Diff} 分 📈`;
+            else if (q5Diff < -0.05) q5Comparison = `低於全院平均 ${Math.abs(q5Diff)} 分 ⚠️`;
+            else q5Comparison = `與全院平均相近 (微幅落差 ${Math.abs(q5Diff)} 分)`;
             
             const topDriver = correlations.length > 0 ? correlations[correlations.length - 1] : null;
-            const lowestItem = sec3ListData.length > 0 ? sec3ListData[0] : null;
+            
+            let minAvgItem = null;
+            let maxGapItem = null;
+            let minAvg = 6;
+            let maxGap = 100;
+
+            sec3ListData.forEach(item => {
+                if (item.curAvg > 0) {
+                    if (item.curAvg < minAvg) {
+                        minAvg = item.curAvg;
+                        minAvgItem = item;
+                    }
+                    const diff = item.curAvg - item.allAvg;
+                    if (diff < maxGap) {
+                        maxGap = diff;
+                        maxGapItem = { text: item.text, diff: diff.toFixed(2) };
+                    }
+                }
+            });
+
+            const t1AvgVal = parseFloat(calcAvg(filteredData, 'T1'));
+            const s4AvgVal = parseFloat(calcAvg(filteredData, 'S4'));
+            let cognitiveGapText = "";
+            if (t1AvgVal > 0 && s4AvgVal > 0) {
+                const gap = (t1AvgVal - s4AvgVal).toFixed(2);
+                if (gap > 0.2) {
+                    cognitiveGapText = `教師自評熟練度(${t1AvgVal})明顯高於學員評估(${s4AvgVal})，存在高估的認知落差，建議加強教師端操作引導。`;
+                } else if (gap < -0.2) {
+                    cognitiveGapText = `學員評估教師熟練度(${s4AvgVal})高於教師自評(${t1AvgVal})，顯示教師對操作較無自信，但實際表現符合學員期待。`;
+                } else {
+                    cognitiveGapText = `教師自評(${t1AvgVal})與學員評估(${s4AvgVal})分數相近，顯示師生對於系統操作熟練度的認知客觀一致。`;
+                }
+            } else {
+                cognitiveGapText = "目前篩選條件下，無完整的師生熟練度對比數據。";
+            }
+
+            const t3AvgVal = parseFloat(calcAvg(filteredData, 'T3'));
+            const s2AvgVal = parseFloat(calcAvg(filteredData, 'S2'));
+            const s3AvgVal = parseFloat(calcAvg(filteredData, 'S3'));
+            const benefits = [
+                { name: "教師行政減量", avg: t3AvgVal, k: 'T3' },
+                { name: "學員歷程保存", avg: s2AvgVal, k: 'S2' },
+                { name: "學員進度掌握", avg: s3AvgVal, k: 'S3' }
+            ].filter(b => b.avg > 0).sort((a, b) => b.avg - a.avg);
+
+            let benefitsText = "";
+            if (benefits.length > 0) {
+                if (benefits.length === 1) {
+                    const b = benefits[0];
+                    benefitsText = `因目前篩選身分，僅顯示「${b.name}」指標。其獲得 ${b.avg} 分，表現平穩。`;
+                } else {
+                    const topBenefit = benefits[0];
+                    const bottomBenefit = benefits[benefits.length - 1];
+                    if (topBenefit.avg === bottomBenefit.avg) {
+                        benefitsText = `各項系統價值評價相近，均為 ${topBenefit.avg} 分左右。`;
+                    } else {
+                        // 修正：當分數差距微小或整體都偏高時，不要用「痛點」等字眼
+                        benefitsText = `核心價值中，以「${topBenefit.name}」相對最高(${topBenefit.avg}分)；「${bottomBenefit.name}」為 ${bottomBenefit.avg} 分，整體各項分數差距微小、表現平穩。`;
+                    }
+                }
+            } else {
+                benefitsText = "目前篩選條件下，無相關系統效益數據。";
+            }
             // =============================
 
             return (
@@ -573,18 +642,50 @@
 
                     <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8 md:space-y-12">
                         
-                        {/* 🌟 智能數據洞察區塊 (新增) */}
-                        <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl shadow-lg p-5 md:p-7 text-white flex flex-col md:flex-row gap-5 md:gap-6 items-center border border-blue-600">
-                            <div className="flex-none">
-                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl shadow-inner">🤖</div>
-                            </div>
-                            <div className="flex-grow">
-                                <h2 className="text-xl font-black mb-3 flex items-center gap-2 tracking-wide text-blue-50">📊 智能數據洞察 (AI Insights)</h2>
-                                <ul className="space-y-2 text-sm md:text-base text-blue-100 font-bold leading-relaxed">
-                                    <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">✨</span> <span><strong className="text-white">整體表現：</strong>目前篩選範圍的整體滿意度為 <span className="text-yellow-400 text-lg mx-0.5">{currentQ5}</span> 分，{q5Comparison}。</span></li>
-                                    {topDriver && <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">🎯</span> <span><strong className="text-white">優化槓桿：</strong>分析顯示「<span className="text-white">{topDriver.name.replace(/^\(.*\)\s/, '')}</span>」與整體滿意度高度相關 (r={topDriver.val})，是提升系統體驗的最關鍵驅動因子。</span></li>}
-                                    {lowestItem && <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">⚠️</span> <span><strong className="text-white">首要痛點：</strong>當前評價最低的項目為「<span className="text-yellow-300">{lowestItem.text}</span>」(僅 {lowestItem.curAvg.toFixed(2)}分)，建議優先查閱下方區塊五相關留言，對症下藥。</span></li>}
-                                </ul>
+                        {/* 🌟 智能數據洞察區塊 (柔和客觀版、移除機器人圖示) */}
+                        <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl shadow-lg p-5 md:p-7 text-white flex flex-col border border-blue-600">
+                            <h2 className="text-xl font-black mb-5 flex items-center gap-2 tracking-wide text-blue-50 border-b border-blue-500/50 pb-3">📊 智能數據綜合洞察報告</h2>
+                            
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 text-sm md:text-base text-blue-100 font-bold leading-relaxed">
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">✨</span> 
+                                    <span><strong className="text-white text-[15px]">整體表現：</strong>目前範圍滿意度 <span className="text-yellow-400 text-lg mx-0.5">{currentQ5}</span> 分，{q5Comparison}。</span>
+                                </div>
+                                
+                                {topDriver && (
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">🎯</span> 
+                                    <span><strong className="text-white text-[15px]">關鍵驅動：</strong>「<span className="text-white">{topDriver.name.replace(/^\(.*\)\s/, '')}</span>」相關性最高(r={topDriver.val})，為提升體驗核心。</span>
+                                </div>
+                                )}
+                                
+                                {minAvgItem && (
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">💡</span> 
+                                    <span><strong className="text-white text-[15px]">優先關注：</strong>各題項差距微小，其中「<span className="text-yellow-300">{minAvgItem.text}</span>」相對較低 ({minAvgItem.curAvg.toFixed(2)}分)，可作為微調參考。</span>
+                                </div>
+                                )}
+                                
+                                {maxGapItem && maxGapItem.diff < -0.05 && (
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">📉</span> 
+                                    <span><strong className="text-white text-[15px]">基準比較：</strong>「<span className="text-white">{maxGapItem.text}</span>」微幅落後全院 ({maxGapItem.diff}分)，可留意後續變化。</span>
+                                </div>
+                                )}
+
+                                {cognitiveGapText && (
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">👥</span> 
+                                    <span><strong className="text-white text-[15px]">認知落差：</strong>{cognitiveGapText}</span>
+                                </div>
+                                )}
+
+                                {benefitsText && (
+                                <div className="flex items-start gap-2.5">
+                                    <span className="text-yellow-400 text-lg leading-none mt-0.5">💎</span> 
+                                    <span><strong className="text-white text-[15px]">系統效益：</strong>{benefitsText}</span>
+                                </div>
+                                )}
                             </div>
                         </div>
 
@@ -797,7 +898,6 @@
                                     <h3 className="font-black text-gray-900 text-lg mb-1">4-3. 系統淨效益與核心價值</h3>
                                     <p className="text-sm font-bold text-gray-600 mb-4">評估行政減量、歷程保存與自我管理效益</p>
                                     
-                                    {/* 新增：4-3 的題號對象說明圖例 */}
                                     <div className="text-xs font-bold text-gray-500 mb-5 ml-1 flex flex-wrap items-center gap-2">
                                         <span>💡 題號填答對象說明：</span>
                                         <span className="px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-gray-700"><strong className="text-blue-700">Q</strong> 全體人員</span>
@@ -834,7 +934,6 @@
                                             const isNeg = ["當機", "卡頓", "找不到", "慢"].includes(kw);
                                             const isPos = ["好用", "進步", "很快"].includes(kw);
                                             
-                                            // 高對比按鈕設計 (白底粗框線)
                                             const colorClass = isNeg ? 'bg-white text-red-700 border-red-500 hover:bg-red-50' : 
                                                              isPos ? 'bg-white text-green-700 border-green-600 hover:bg-green-50' : 
                                                              'bg-white text-blue-700 border-blue-500 hover:bg-blue-50';

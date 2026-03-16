@@ -515,6 +515,16 @@
                 ]
             };
 
+            // === 新增：動態數據洞察邏輯 ===
+            const currentQ5 = parseFloat(calcAvg(filteredData, 'Q5')).toFixed(2);
+            const allQ5 = parseFloat(calcAvg(allData, 'Q5')).toFixed(2);
+            const q5Diff = (currentQ5 - allQ5).toFixed(2);
+            const q5Comparison = q5Diff > 0 ? `高於全院平均 ${q5Diff} 分 📈` : q5Diff < 0 ? `低於全院平均 ${Math.abs(q5Diff)} 分 ⚠️` : `與全院平均持平`;
+            
+            const topDriver = correlations.length > 0 ? correlations[correlations.length - 1] : null;
+            const lowestItem = sec3ListData.length > 0 ? sec3ListData[0] : null;
+            // =============================
+
             return (
                 <div className="min-h-screen pb-16">
                     {/* 頂部高對比彩色條 */}
@@ -563,6 +573,21 @@
 
                     <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8 md:space-y-12">
                         
+                        {/* 🌟 智能數據洞察區塊 (新增) */}
+                        <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl shadow-lg p-5 md:p-7 text-white flex flex-col md:flex-row gap-5 md:gap-6 items-center border border-blue-600">
+                            <div className="flex-none">
+                                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl shadow-inner">🤖</div>
+                            </div>
+                            <div className="flex-grow">
+                                <h2 className="text-xl font-black mb-3 flex items-center gap-2 tracking-wide text-blue-50">📊 智能數據洞察 (AI Insights)</h2>
+                                <ul className="space-y-2 text-sm md:text-base text-blue-100 font-bold leading-relaxed">
+                                    <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">✨</span> <span><strong className="text-white">整體表現：</strong>目前篩選範圍的整體滿意度為 <span className="text-yellow-400 text-lg mx-0.5">{currentQ5}</span> 分，{q5Comparison}。</span></li>
+                                    {topDriver && <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">🎯</span> <span><strong className="text-white">優化槓桿：</strong>分析顯示「<span className="text-white">{topDriver.name.replace(/^\(.*\)\s/, '')}</span>」與整體滿意度高度相關 (r={topDriver.val})，是提升系統體驗的最關鍵驅動因子。</span></li>}
+                                    {lowestItem && <li className="flex items-start gap-2.5"><span className="text-yellow-400 text-lg leading-none">⚠️</span> <span><strong className="text-white">首要痛點：</strong>當前評價最低的項目為「<span className="text-yellow-300">{lowestItem.text}</span>」(僅 {lowestItem.curAvg.toFixed(2)}分)，建議優先查閱下方區塊五相關留言，對症下藥。</span></li>}
+                                </ul>
+                            </div>
+                        </div>
+
                         {/* 📍 區塊一：決策總覽與歷年趨勢 */}
                         <section>
                             <h2 className="text-xl md:text-2xl font-black border-l-8 border-blue-600 pl-4 mb-5 text-gray-900">區塊一：決策總覽與歷年趨勢</h2>
@@ -731,11 +756,12 @@
                                     <h3 className="font-black text-gray-900 text-lg mb-1">4-1. 系統體質健康度 (D&M)</h3>
                                     <p className="text-sm font-bold text-gray-600 mb-4">診斷系統、資訊與服務三大品質表現</p>
                                     <div className="text-sm text-gray-800 mb-4 bg-gray-100 p-4 rounded-xl border-2 border-gray-200 leading-relaxed">
-                                        <span className="font-black text-gray-900 mb-2 block">📝 數值計算方式：</span>
+                                        <span className="font-black text-gray-900 mb-1 block">📝 數值計算方式：</span>
+                                        <p className="text-xs text-gray-600 mb-3 font-bold">將下列各構面涵蓋之題項得分（1~5分）進行加總後平均，得出各構面的指標分數。</p>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <div><span className="font-black text-blue-700">系統品質：</span><br/>Q1(操作), Q2(穩定)</div>
-                                            <div><span className="font-black text-blue-700">資訊品質：</span><br/>Q3(查詢方便), Q4(掌握進度), S1(學員順利查閱回饋)</div>
-                                            <div><span className="font-black text-blue-700">服務品質：</span><br/>T7(教師獲助), S5(學員獲助)</div>
+                                            <div><span className="font-black text-blue-700">系統品質：</span><br/>Q1(操作), Q2(穩定) <span className="text-gray-500 font-bold">均分</span></div>
+                                            <div><span className="font-black text-blue-700">資訊品質：</span><br/>Q3(查詢方便), Q4(掌握進度), S1(學員順利查閱回饋) <span className="text-gray-500 font-bold">均分</span></div>
+                                            <div><span className="font-black text-blue-700">服務品質：</span><br/>T7(教師獲助), S5(學員獲助) <span className="text-gray-500 font-bold">均分</span></div>
                                         </div>
                                     </div>
                                     <div className="flex-grow min-h-[300px]">

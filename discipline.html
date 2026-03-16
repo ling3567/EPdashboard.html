@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Portfolio 系統滿意度 - 職類滿意度分析</title>
+    
+    <!-- 引入 Google Fonts: 思源黑體 (Noto Sans TC) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 設定 Tailwind 使用思源黑體 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- 引入 React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 引入 Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 引入 Apache ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+
+    <style>
+        body { 
+            background-color: #e5e7eb; 
+            color: #111827; 
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .glass-header { 
+            background: rgba(255, 255, 255, 0.98); 
+            border-bottom: 2px solid #d1d5db; 
+        }
+        .dashboard-card {
+            background-color: #ffffff;
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 2px solid #cbd5e1; 
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // ==========================================
+        // 1. 設定區塊 & 模擬資料產生器
+        // ==========================================
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbywzmBAxZkOn41Qhrf2ubCt3e1f4hAELAAsxMky4RvYEas4tMIjuUYGXnYc3cRAaMxFLw/exec"; 
+        const USE_MOCK_DATA = false;
+
+        const QUESTION_MAP = {
+            "Q1": "操作介面簡單清楚",
+            "Q2": "系統運作穩定",
+            "Q3": "查詢與閱讀課程資訊方便",
+            "Q4": "能掌握學習/教學進度",
+            "Q5": "整體滿意度",
+            "T1": "教師自評系統操作熟練度",
+            "T2": "教師評分流程順暢度(Workflow Fit)",
+            "T3": "教師能有效節省工作時間",
+            "T4": "教師能順利完成開課與名單設定", // 補充題項
+            "T5": "教師能順利上傳教材與指派作業", // 補充題項
+            "T6": "教師能順利查閱學員歷程與成績", // 補充題項
+            "T7": "教師端遇到問題能獲得有效協助",
+            "S1": "學員能順利查閱老師評核結果與回饋",
+            "S2": "學員系統完整保存學習歷程與評核紀錄",
+            "S3": "學員透過系統能掌握完訓進度與待辦項目",
+            "S4": "學員評估教師系統操作熟練度",
+            "S5": "學員端遇到問題能獲得有效協助"
+        };
+
+        const KEYWORDS = ["當機", "卡頓", "介面", "找不到", "上傳", "很快", "好用", "進步", "教育訓練", "流程", "速度"];
+
+        const COLUMNS = {
+            JOB_CATEGORY: "JobCategory",
+            ROLE: "Role",
+            FEEDBACK_BOTTLENECK: "FeedbackBottleneck", 
+            FEEDBACK_OTHER: "FeedbackOther" 
+        };
+
+        const generateMockData = () => {
+            const professions = ["醫師", "藥事", "醫事放射", "醫事檢驗", "護理", "營養", "呼吸治療", "聽力", "物理治療", "職能治療", "臨床心理", "語言治療"];
+            const roles = ["臨床教師", "學員"];
+            
+            let surveyData = [];
+            for(let i=0; i<300; i++) {
+                const role = roles[Math.floor(Math.random() * roles.length)];
+                const randScore = () => Math.min(5, Math.max(1, Math.round(Math.random() * 2 + 3 + (Math.random() > 0.5 ? 0.5 : -0.5))));
+                
+                let row = {
+                    [COLUMNS.JOB_CATEGORY]: professions[Math.floor(Math.random() * professions.length)],
+                    [COLUMNS.ROLE]: role,
+                    "Q1": randScore(), "Q2": randScore(), "Q3": randScore(), "Q4": randScore(), "Q5": randScore(),
+                };
+
+                if(role === "學員") {
+                    row.S1 = randScore(); row.S2 = randScore(); row.S3 = randScore(); row.S4 = randScore(); row.S5 = randScore();
+                } else {
+                    row.T1 = randScore(); row.T2 = randScore(); row.T3 = randScore(); 
+                    row.T4 = randScore(); row.T5 = randScore(); row.T6 = randScore(); row.T7 = randScore();
+                }
+
+                // 隨機產生留言
+                if (Math.random() > 0.6) {
+                    const kw1 = KEYWORDS[Math.floor(Math.random() * KEYWORDS.length)];
+                    row[COLUMNS.FEEDBACK_BOTTLENECK] = `在${kw1}的部分可以再加強，有時候操作起來不夠順暢。`;
+                }
+                if (Math.random() > 0.7) {
+                    const kw2 = KEYWORDS[Math.floor(Math.random() * KEYWORDS.length)];
+                    row[COLUMNS.FEEDBACK_OTHER] = `如果${kw2}能夠優化，整體的體驗會非常好，辛苦了！`;
+                }
+
+                surveyData.push(row);
+            }
+            return { surveyData };
+        };
+
+        // ==========================================
+        // 2. 共用工具函數
+        // ==========================================
+        const calcAvg = (data, key) => {
+            const valid = data.filter(d => d[key] !== '' && d[key] !== null && !isNaN(parseFloat(d[key])));
+            return valid.length ? (valid.reduce((sum, d) => sum + parseFloat(d[key]), 0) / valid.length).toFixed(2) : "0.00";
+        };
+
+        const Icons = {
+            Filter: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+            Teacher: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M2 22h20"/><path d="M10 2v4"/><path d="M14 2v4"/><rect x="4" y="6" width="16" height="12" rx="2"/><path d="M10 10h4"/></svg>,
+            Student: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+        };
+
+        // ECharts 元件
+        const ReactECharts = ({ option, style, className }) => {
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (!chartInstance.current) {
+                    chartInstance.current = echarts.init(chartRef.current);
+                }
+                const finalOption = {
+                    ...option,
+                    textStyle: {
+                        fontFamily: '"Noto Sans TC", sans-serif',
+                        ...(option.textStyle || {})
+                    }
+                };
+                chartInstance.current.setOption(finalOption, true); 
+                const handleResize = () => chartInstance.current.resize();
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, [option]);
+
+            return <div ref={chartRef} style={{ width: '100%', height: '100%', ...style }} className={className} />;
+        };
+
+        // ==========================================
+        // 4. 主應用程式
+        // ==========================================
+        const DepartmentDashboard = () => {
+            const [rawData, setRawData] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedProfession, setSelectedProfession] = useState('全院總計');
+
+            // 留言板的頁籤狀態
+            const [teacherFeedbackTab, setTeacherFeedbackTab] = useState('bottleneck');
+            const [studentFeedbackTab, setStudentFeedbackTab] = useState('bottleneck');
+
+            useEffect(() => {
+                const loadData = async () => {
+                    try {
+                        if (USE_MOCK_DATA) {
+                            setTimeout(() => {
+                                setRawData(generateMockData());
+                                setLoading(false);
+                            }, 800);
+                        } else {
+                            const res = await fetch(GAS_API_URL);
+                            const json = await res.json();
+                            if (json.error) throw new Error(json.error);
+                            setRawData(json);
+                            setLoading(false);
+                        }
+                    } catch (err) {
+                        setError(err.message);
+                        setLoading(false);
+                    }
+                };
+                loadData();
+            }, []);
+
+            const allData = rawData ? rawData.surveyData : [];
+            
+            const deptData = useMemo(() => {
+                if (!rawData) return [];
+                if (selectedProfession === '全院總計') return allData;
+                return allData.filter(d => d[COLUMNS.JOB_CATEGORY] === selectedProfession);
+            }, [allData, selectedProfession]);
+
+            const teacherData = useMemo(() => deptData.filter(d => d[COLUMNS.ROLE] === '臨床教師'), [deptData]);
+            const studentData = useMemo(() => deptData.filter(d => d[COLUMNS.ROLE] === '學員'), [deptData]);
+
+            const allTeacherData = useMemo(() => allData.filter(d => d[COLUMNS.ROLE] === '臨床教師'), [allData]);
+            const allStudentData = useMemo(() => allData.filter(d => d[COLUMNS.ROLE] === '學員'), [allData]);
+
+            if (loading) return (
+                <div className="flex h-screen items-center justify-center flex-col gap-4 bg-gray-50">
+                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-700 rounded-full animate-spin"></div>
+                    <div className="text-xl text-gray-800 font-bold tracking-wide">資料載入中，請稍候...</div>
+                </div>
+            );
+            if (error) return <div className="flex h-screen items-center justify-center text-xl font-bold text-red-700 bg-red-50">發生錯誤: {error}</div>;
+
+            // 渲染單一題目的長條圖元件
+            const QuestionRow = ({ qKey, targetData, baselineData, barColor }) => {
+                const curAvg = parseFloat(calcAvg(targetData, qKey));
+                const allAvg = parseFloat(calcAvg(baselineData, qKey));
+                
+                if (curAvg === 0) return null; 
+
+                const diff = (curAvg - allAvg).toFixed(2);
+                const isPositive = diff >= 0;
+
+                return (
+                    <div className="py-4 border-b-2 border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors px-2">
+                        <div className="flex justify-between items-start mb-2">
+                            <div className="text-[15px] font-black text-gray-900 leading-snug w-3/4 pr-4">
+                                <span className="inline-block px-2 py-0.5 bg-gray-200 text-gray-800 rounded border border-gray-300 text-xs mr-2">{qKey}</span>
+                                {QUESTION_MAP[qKey]}
+                            </div>
+                            <div className="text-right flex-none">
+                                <div className="text-2xl font-black text-gray-900 leading-none">{curAvg.toFixed(2)}</div>
+                                <div className="text-xs font-bold text-gray-500 mt-1">/ 5</div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-3 mt-3">
+                            <div className="flex-1 bg-gray-200 border border-gray-300 rounded-full h-3 overflow-hidden">
+                                <div className={`h-full transition-all duration-700 ease-out ${barColor}`} style={{ width: `${(curAvg / 5) * 100}%` }}></div>
+                            </div>
+                            <div className="w-28 text-right flex-none flex flex-col items-end gap-1">
+                                <span className={`text-[11px] px-2 py-0.5 rounded border font-bold shadow-sm ${isPositive ? 'bg-green-100 text-green-800 border-green-300' : 'bg-red-100 text-red-800 border-red-300'}`}>
+                                    {isPositive ? '+' : ''}{diff} <span className="opacity-70 ml-0.5">(全院)</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // 渲染留言清單元件
+            const renderFeedbackList = (data, tabState, setTabState, theme) => {
+                const targetCol = tabState === 'bottleneck' ? COLUMNS.FEEDBACK_BOTTLENECK : COLUMNS.FEEDBACK_OTHER;
+                const listData = data.filter(d => String(d[targetCol] || '').trim() !== '');
+                
+                const isTeacher = theme === 'blue';
+                const activeClasses = isTeacher 
+                    ? 'bg-white text-blue-700 border-t-4 border-t-blue-600 shadow-sm' 
+                    : 'bg-white text-emerald-700 border-t-4 border-t-emerald-600 shadow-sm';
+                const inactiveClasses = 'text-gray-500 hover:bg-gray-200 border-t-4 border-t-transparent';
+
+                return (
+                    <div className="flex flex-col h-full bg-gray-100 rounded-xl overflow-hidden border-2 border-gray-200">
+                        <div className="flex border-b-2 border-gray-200 text-sm md:text-base font-black">
+                            <button className={`flex-1 py-3 text-center transition-all ${tabState === 'bottleneck' ? activeClasses : inactiveClasses}`} onClick={() => setTabState('bottleneck')}>最需改善之處</button>
+                            <button className={`flex-1 py-3 text-center transition-all ${tabState === 'other' ? activeClasses : inactiveClasses}`} onClick={() => setTabState('other')}>其他建議</button>
+                        </div>
+                        <div className="p-4 overflow-y-auto custom-scrollbar flex-grow space-y-3 bg-white h-[350px]">
+                            {listData.length === 0 ? (
+                                <div className="text-gray-400 text-center py-10 font-bold flex flex-col items-center">
+                                    <span className="text-4xl opacity-30 mb-2">📭</span> 目前無符合條件之留言
+                                </div>
+                            ) : (
+                                listData.map((d, i) => (
+                                    <div key={i} className="p-4 bg-gray-50 rounded-xl border-2 border-gray-100 text-[15px] font-medium text-gray-900 leading-relaxed hover:bg-white hover:border-gray-300 transition-colors">
+                                        {d[targetCol]}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            const teacherKeys = ["Q1", "Q2", "Q3", "Q4", "Q5", "T1", "T2", "T3", "T4", "T5", "T6", "T7"];
+            const studentKeys = ["Q1", "Q2", "Q3", "Q4", "Q5", "S1", "S2", "S3", "S4", "S5"];
+
+            // 師生認知落差圖表 (T1 vs S4)
+            const t1AvgVal = parseFloat(calcAvg(teacherData, 'T1'));
+            const s4AvgVal = parseFloat(calcAvg(studentData, 'S4'));
+            
+            const cognitiveGapOption = {
+                tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' }, backgroundColor: 'rgba(255,255,255,0.95)' },
+                legend: { bottom: 0, textStyle: { fontSize: 13, color: '#374151', fontWeight: 'bold' }, icon: 'circle' },
+                grid: { left: '2%', right: '8%', top: '15%', bottom: '25%', containLabel: true },
+                xAxis: { type: 'value', max: 5, splitLine: { lineStyle: { type: 'dashed', color: '#cbd5e1' } }, axisLabel: { color: '#374151', fontWeight: 'bold' } },
+                yAxis: { type: 'category', data: ['系統熟練度'], axisLine: { show: false }, axisTick: { show: false }, axisLabel: { show: false } },
+                series: [
+                    { name: 'T1 教師自評熟練度', type: 'bar', data: [t1AvgVal], itemStyle: { color: '#1d4ed8', borderRadius: 4 }, barWidth: '35%', label: {show: true, position: 'right', color: '#1d4ed8', fontWeight: '900', fontSize: 14} },
+                    { name: 'S4 學員評估教師熟練度', type: 'bar', data: [s4AvgVal], itemStyle: { color: '#047857', borderRadius: 4 }, barWidth: '35%', label: {show: true, position: 'right', color: '#047857', fontWeight: '900', fontSize: 14} }
+                ]
+            };
+
+            // 全院 Q5 基準計算
+            const allTeacherQ5 = parseFloat(calcAvg(allTeacherData, 'Q5'));
+            const allStudentQ5 = parseFloat(calcAvg(allStudentData, 'Q5'));
+
+            return (
+                <div className="min-h-screen pb-16">
+                    {/* 頂部高對比彩色條 */}
+                    <div className="h-2 w-full bg-gradient-to-r from-blue-900 via-blue-600 to-indigo-500 fixed top-0 z-[60]"></div>
+                    
+                    {/* 頂部固定過濾器 */}
+                    <div className="sticky top-2 z-50 glass-header px-4 md:px-6 py-4 mb-6 md:mb-8 shadow-sm">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 text-xl md:text-2xl font-black text-gray-900 tracking-tight">
+                                <div className="p-2 bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg"><Icons.Filter /></div>
+                                職類滿意度分析
+                            </div>
+                            <div className="flex items-center gap-3 w-full md:w-auto bg-gray-100 p-2 rounded-xl border border-gray-200">
+                                <span className="text-sm font-bold text-gray-600 pl-2 whitespace-nowrap">選擇檢視職類：</span>
+                                <select className="w-full sm:w-auto border-2 border-gray-300 rounded-lg px-4 py-2 text-base font-black text-indigo-900 outline-none focus:ring-4 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white cursor-pointer shadow-sm"
+                                    value={selectedProfession} onChange={e => setSelectedProfession(e.target.value)}>
+                                    <option value="全院總計">🏥 全院總計</option>
+                                    <option value="醫師">醫師</option>
+                                    <option value="藥事">藥事</option>
+                                    <option value="醫事放射">醫事放射</option>
+                                    <option value="醫事檢驗">醫事檢驗</option>
+                                    <option value="護理">護理</option>
+                                    <option value="營養">營養</option>
+                                    <option value="呼吸治療">呼吸治療</option>
+                                    <option value="聽力">聽力</option>
+                                    <option value="物理治療">物理治療</option>
+                                    <option value="職能治療">職能治療</option>
+                                    <option value="臨床心理">臨床心理</option>
+                                    <option value="語言治療">語言治療</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="max-w-[1400px] mx-auto px-4 md:px-6">
+                        
+                        {/* 警告標語 */}
+                        {deptData.length === 0 && (
+                            <div className="bg-red-50 border-2 border-red-200 text-red-800 p-6 rounded-xl font-bold text-center text-lg mb-8 shadow-sm">
+                                此職類目前尚無任何填答資料。
+                            </div>
+                        )}
+
+                        {deptData.length > 0 && (
+                            <div className="space-y-8 md:space-y-10">
+                                
+                                {/* 雙欄對比佈局：量化題項 */}
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8 items-start">
+                                    
+                                    {/* 🍎 左欄：臨床教師視角 */}
+                                    <div className="flex flex-col gap-6">
+                                        {/* 教師頂部 KPI */}
+                                        <div className="bg-blue-900 rounded-2xl shadow-lg border-2 border-blue-800 overflow-hidden">
+                                            <div className="bg-blue-950 px-6 py-4 flex items-center gap-3 border-b border-blue-800/50">
+                                                <div className="p-2 bg-blue-800 rounded-lg text-blue-200"><Icons.Teacher /></div>
+                                                <h2 className="text-2xl font-black text-white tracking-wide">臨床教師視角</h2>
+                                            </div>
+                                            <div className="p-6 grid grid-cols-2 gap-6 divide-x-2 divide-blue-800/50">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-blue-200 font-bold text-sm mb-2">總填答人數</span>
+                                                    <span className="text-4xl font-black text-white mb-2">{teacherData.length} <span className="text-base font-medium text-blue-300">人</span></span>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-blue-200 font-bold text-sm mb-2">整體滿意度 (Q5)</span>
+                                                    <span className="text-4xl font-black text-white mb-2">{calcAvg(teacherData, 'Q5')} <span className="text-base font-medium text-blue-300">/ 5</span></span>
+                                                    {/* 新增全院平均對比小徽章 */}
+                                                    <span className="text-xs font-bold text-blue-100 bg-blue-800 px-3 py-1 rounded-full shadow-inner border border-blue-700">
+                                                        全院教師平均 {allTeacherQ5.toFixed(2)} 
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 教師細項清單 */}
+                                        <div className="dashboard-card p-6 border-t-8 border-t-blue-800">
+                                            <h3 className="text-lg font-black text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">📊 各題項滿意度與全院對比</h3>
+                                            {teacherData.length === 0 ? (
+                                                <div className="text-center py-10 text-gray-400 font-bold">目前無教師填答資料</div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    {teacherKeys.map(k => (
+                                                        <QuestionRow 
+                                                            key={k} 
+                                                            qKey={k} 
+                                                            targetData={teacherData} 
+                                                            baselineData={allTeacherData} // 精準對比全院教師
+                                                            barColor="bg-blue-600"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 🍏 右欄：學員視角 */}
+                                    <div className="flex flex-col gap-6">
+                                        {/* 學員頂部 KPI */}
+                                        <div className="bg-emerald-800 rounded-2xl shadow-lg border-2 border-emerald-700 overflow-hidden">
+                                            <div className="bg-emerald-900 px-6 py-4 flex items-center gap-3 border-b border-emerald-700/50">
+                                                <div className="p-2 bg-emerald-700 rounded-lg text-emerald-200"><Icons.Student /></div>
+                                                <h2 className="text-2xl font-black text-white tracking-wide">學員視角</h2>
+                                            </div>
+                                            <div className="p-6 grid grid-cols-2 gap-6 divide-x-2 divide-emerald-700/50">
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-emerald-200 font-bold text-sm mb-2">總填答人數</span>
+                                                    <span className="text-4xl font-black text-white mb-2">{studentData.length} <span className="text-base font-medium text-emerald-300">人</span></span>
+                                                </div>
+                                                <div className="flex flex-col items-center justify-center">
+                                                    <span className="text-emerald-200 font-bold text-sm mb-2">整體滿意度 (Q5)</span>
+                                                    <span className="text-4xl font-black text-white mb-2">{calcAvg(studentData, 'Q5')} <span className="text-base font-medium text-emerald-300">/ 5</span></span>
+                                                    {/* 新增全院平均對比小徽章 */}
+                                                    <span className="text-xs font-bold text-emerald-100 bg-emerald-900 px-3 py-1 rounded-full shadow-inner border border-emerald-700">
+                                                        全院學員平均 {allStudentQ5.toFixed(2)} 
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* 學員細項清單 */}
+                                        <div className="dashboard-card p-6 border-t-8 border-t-emerald-700">
+                                            <h3 className="text-lg font-black text-gray-900 mb-4 pb-2 border-b-2 border-gray-200">📊 各題項滿意度與全院對比</h3>
+                                            {studentData.length === 0 ? (
+                                                <div className="text-center py-10 text-gray-400 font-bold">目前無學員填答資料</div>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    {studentKeys.map(k => (
+                                                        <QuestionRow 
+                                                            key={k} 
+                                                            qKey={k} 
+                                                            targetData={studentData} 
+                                                            baselineData={allStudentData} // 精準對比全院學員
+                                                            barColor="bg-emerald-600"
+                                                        />
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 📍 新增：師生對系統熟練度認知落差 */}
+                                <div className="dashboard-card p-6 border-l-8 border-l-indigo-500">
+                                    <h2 className="text-xl font-black text-gray-900 mb-2">🤝 師生對系統熟練度認知落差</h2>
+                                    <p className="text-sm font-bold text-gray-500 mb-4">對比「T1 臨床教師自評熟練度」與「S4 學員評估臨床教師熟練度」之差異</p>
+                                    <div className="h-[220px]">
+                                        {teacherData.length > 0 && studentData.length > 0 ? (
+                                            <ReactECharts option={cognitiveGapOption} />
+                                        ) : (
+                                            <div className="h-full flex items-center justify-center text-gray-400 font-bold bg-gray-50 rounded-xl border border-gray-200">需同時具備教師與學員資料方能顯示認知落差</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* 📍 新增：開放式回饋雙欄區塊 */}
+                                <section className="pt-4 border-t-2 border-gray-200">
+                                    <h2 className="text-2xl font-black border-l-8 border-indigo-600 pl-4 mb-6 text-gray-900">💬 開放式回饋留言板</h2>
+                                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8 items-start">
+                                        {/* 教師留言區 */}
+                                        <div className="dashboard-card p-5 md:p-6 border-t-8 border-t-blue-800">
+                                            <h3 className="text-lg font-black text-blue-900 mb-4 flex items-center gap-2"><Icons.Teacher /> 臨床教師回饋</h3>
+                                            {renderFeedbackList(teacherData, teacherFeedbackTab, setTeacherFeedbackTab, 'blue')}
+                                        </div>
+
+                                        {/* 學員留言區 */}
+                                        <div className="dashboard-card p-5 md:p-6 border-t-8 border-t-emerald-700">
+                                            <h3 className="text-lg font-black text-emerald-900 mb-4 flex items-center gap-2"><Icons.Student /> 學員回饋</h3>
+                                            {renderFeedbackList(studentData, studentFeedbackTab, setStudentFeedbackTab, 'emerald')}
+                                        </div>
+                                    </div>
+                                </section>
+
+                            </div>
+                        )}
+                        
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DepartmentDashboard />);
+    </script>
+</body>
+</html>

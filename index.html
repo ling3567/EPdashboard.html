@@ -83,6 +83,9 @@
             "T1": "教師自評系統操作熟練度",
             "T2": "教師評分流程順暢度(Workflow Fit)",
             "T3": "教師能有效節省工作時間",
+            "T4": "教師能順利完成開課與名單設定", 
+            "T5": "教師能順利上傳教材與指派作業", 
+            "T6": "教師能順利查閱學員歷程與成績", 
             "T7": "教師端遇到問題能獲得有效協助"
         };
 
@@ -122,7 +125,8 @@
                 if(role === "學員") {
                     row.S1 = randScore(); row.S2 = randScore(); row.S3 = randScore(); row.S4 = randScore(); row.S5 = randScore();
                 } else {
-                    row.T1 = randScore(); row.T2 = randScore(); row.T3 = randScore(); row.T7 = randScore();
+                    row.T1 = randScore(); row.T2 = randScore(); row.T3 = randScore(); 
+                    row.T4 = randScore(); row.T5 = randScore(); row.T6 = randScore(); row.T7 = randScore();
                 }
 
                 if (Math.random() > 0.7) {
@@ -178,16 +182,16 @@
         };
 
         const Icons = {
-            Users: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-            Star: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-            Server: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>,
-            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-            Filter: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
-            Grid: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
+            Users: ({className}) => <svg className={className || "w-6 h-6"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Star: ({className}) => <svg className={className || "w-6 h-6"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+            Server: ({className}) => <svg className={className || "w-6 h-6"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>,
+            Clock: ({className}) => <svg className={className || "w-6 h-6"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            Filter: ({className}) => <svg className={className || "w-5 h-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>,
+            Grid: ({className}) => <svg className={className || "w-4 h-4"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>
         };
 
         // ==========================================
-        // 3. ECharts 元件包裝 (自動注入統一字型設定)
+        // 3. ECharts 元件包裝
         // ==========================================
         const ReactECharts = ({ option, style, className }) => {
             const chartRef = useRef(null);
@@ -234,7 +238,6 @@
             const [feedbackTab, setFeedbackTab] = useState('bottleneck'); 
             const [selectedKeyword, setSelectedKeyword] = useState(null);
 
-            // 投影專用：高對比色彩定義
             const colors = {
                 primary: '#1d4ed8',   
                 primaryLight: '#bfdbfe',
@@ -283,7 +286,7 @@
                 });
             }, [rawData, filters]);
 
-            // 🌟 動態基準資料 (依據選擇的身分，自動對齊全院的同儕基準)
+            // 🌟 動態基準資料
             const baselineData = useMemo(() => {
                 if (!rawData) return [];
                 if (filters.role === '全部') return rawData.surveyData;
@@ -334,10 +337,9 @@
             const allData = rawData.surveyData;
             const qMap = rawData.questionMap;
 
-            // ================= 嚴格過濾題庫欄位 (防呆機制) =================
+            // 嚴格過濾題庫欄位
             const quantifiableKeys = Object.keys(qMap).filter(k => /^[QST]\d+$/.test(k));
 
-            // ================= 區塊圖表設定 =================
             const trendOption = {
                 tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#9ca3af', textStyle: {color: '#111827', fontWeight: 'bold'} },
                 legend: { data: ['整體滿意度 (Q5)', '系統穩定度 (Q2)'], bottom: 0, icon: 'circle', textStyle: { fontSize: 13, color: colors.grayText, fontWeight: 'bold' } },
@@ -362,8 +364,23 @@
 
             const driverOption = {
                 tooltip: { trigger: 'axis', formatter: '{b}: R = {c}', backgroundColor: 'rgba(255,255,255,0.95)' },
-                grid: { left: '2%', right: '15%', bottom: '2%', top: '5%', containLabel: true },
-                xAxis: { type: 'value', name: '相關係數 (r)', max: 1, min: 0, splitLine: { lineStyle: { type: 'dashed', color: '#cbd5e1' } }, axisLabel: { color: colors.grayText, fontWeight: 'bold' } },
+                grid: { left: '2%', right: '15%', bottom: '15%', top: '5%', containLabel: true }, // 加大底部空間以容納雙行標籤
+                xAxis: { 
+                    type: 'value', 
+                    name: '相關係數 (r)', 
+                    max: 1, 
+                    min: 0, 
+                    splitLine: { lineStyle: { type: 'dashed', color: '#cbd5e1' } }, 
+                    axisLabel: { 
+                        color: colors.grayText, 
+                        fontWeight: 'bold',
+                        formatter: function (value) {
+                            if (value === 0) return '0\n(不相關/不在乎)';
+                            if (value === 1) return '1\n(極度相關/最在乎)';
+                            return value;
+                        }
+                    } 
+                },
                 yAxis: { type: 'category', data: correlations.map(c => c.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { width: 170, overflow: 'break', interval: 0, fontSize: 13, lineHeight: 18, color: '#111827', fontWeight: 'bold' } },
                 series: [{
                     type: 'bar',
@@ -380,8 +397,28 @@
             });
             const segmentationOption = {
                 tooltip: { trigger: 'axis', backgroundColor: 'rgba(255,255,255,0.95)' },
-                grid: { left: '2%', right: '4%', bottom: '5%', top: '15%', containLabel: true },
-                xAxis: { type: 'category', data: uniqueFreqs, axisLine: { lineStyle: { color: colors.grayBase, width: 2 } }, axisTick: { show: false }, axisLabel: { interval: 0, rotate: uniqueFreqs.length > 4 ? 30 : 0, color: colors.grayText, fontSize: 13, fontWeight: 'bold' } },
+                grid: { left: '2%', right: '4%', bottom: '15%', top: '15%', containLabel: true }, // 💡 加大底部空間以容納雙行文字
+                xAxis: { 
+                    type: 'category', 
+                    data: uniqueFreqs, 
+                    axisLine: { lineStyle: { color: colors.grayBase, width: 2 } }, 
+                    axisTick: { show: false }, 
+                    axisLabel: { 
+                        interval: 0, 
+                        color: colors.grayText, 
+                        fontSize: 12, 
+                        fontWeight: 'bold',
+                        lineHeight: 18, // 💡 增加行高讓文字更易讀
+                        formatter: function (value) {
+                            // 💡 動態判斷並加上換行與次數說明
+                            if (value.includes('極少')) return value + '\n(小於1次/週)';
+                            if (value.includes('偶爾')) return value + '\n(1-3次/週)';
+                            if (value.includes('經常')) return value + '\n(4-5次/週)';
+                            if (value.includes('重度')) return value + '\n(6次以上/週)';
+                            return value;
+                        }
+                    } 
+                },
                 yAxis: { type: 'value', min: 1, max: 5, splitLine: { lineStyle: { type: 'dashed', color: '#cbd5e1' } }, axisLabel: { color: colors.grayText, fontWeight: 'bold' } },
                 series: [{ 
                     name: '平均滿意度', type: 'bar', data: freqAvg, barMaxWidth: 60,
@@ -390,11 +427,10 @@
                 }]
             };
 
-            // 區塊三資料準備
-            const validSec3Keys = quantifiableKeys; // 💡 移除了排除 Q5 的過濾器，讓 Q5 顯示
+            const validSec3Keys = quantifiableKeys;
             const sec3ListData = validSec3Keys.map(k => {
                 const curAvg = parseFloat(calcAvg(filteredData, k));
-                const allAvg = parseFloat(calcAvg(baselineData, k)); // 💡 改用動態同儕基準 baselineData
+                const allAvg = parseFloat(calcAvg(baselineData, k)); 
                 if (curAvg === 0) return null;
 
                 const counts = countScores(filteredData, k);
@@ -418,7 +454,6 @@
                 return getWeight(a.k) - getWeight(b.k);
             });
 
-            // 區塊四資料準備
             const getGroupAvg = (data, keys) => {
                 let sum = 0, count = 0;
                 data.forEach(d => { keys.forEach(k => { if (typeof d[k] === 'number') { sum += d[k]; count++; }});});
@@ -432,7 +467,7 @@
             ];
             
             const radarAll = [
-                getGroupAvg(baselineData, ['Q1', 'Q2']), // 💡 雷達圖的全院基準也改用 baselineData 對齊
+                getGroupAvg(baselineData, ['Q1', 'Q2']), 
                 getGroupAvg(baselineData, ['Q3', 'Q4', 'S1']),
                 getGroupAvg(baselineData, ['T7', 'S5'])
             ];
@@ -525,13 +560,13 @@
 
             // === 動態數據洞察邏輯 ===
             const currentQ5 = parseFloat(calcAvg(filteredData, 'Q5')).toFixed(2);
-            const allQ5 = parseFloat(calcAvg(baselineData, 'Q5')).toFixed(2); // 💡 AI 洞察的基準也改用 baselineData
+            const allQ5 = parseFloat(calcAvg(baselineData, 'Q5')).toFixed(2); 
             const q5Diff = (currentQ5 - allQ5).toFixed(2);
             
-            let q5Comparison = "";
-            if (q5Diff > 0.05) q5Comparison = `高於全院基準 ${q5Diff} 分 📈`;
-            else if (q5Diff < -0.05) q5Comparison = `低於全院基準 ${Math.abs(q5Diff)} 分 ⚠️`;
-            else q5Comparison = `與全院基準相近 (微幅落差 ${Math.abs(q5Diff)} 分)`;
+            let q5ComparisonText = "";
+            if (q5Diff > 0.05) q5ComparisonText = `高於全院基準 ${q5Diff} 分 📈`;
+            else if (q5Diff < -0.05) q5ComparisonText = `低於全院基準 ${Math.abs(q5Diff)} 分 ⚠️`;
+            else q5ComparisonText = `與全院基準相近 (微幅落差 ${Math.abs(q5Diff)} 分)`;
             
             const topDriver = correlations.length > 0 ? correlations[correlations.length - 1] : null;
             
@@ -612,7 +647,7 @@
                             </div>
                             
                             <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center w-full md:w-auto">
-                                {/* 🌟 新增：職類主管切換按鈕，使用明顯的實心藍底設計做為視覺區隔 */}
+                                {/* 🌟 職類主管切換按鈕 */}
                                 <a 
                                     href="https://ling3567.github.io/EPdashboard/discipline.html" 
                                     target="_self"
@@ -622,10 +657,10 @@
                                     查看各職類儀表板
                                 </a>
                                 
-                                {/* 分隔線 (僅在桌面版顯示) */}
+                                {/* 分隔線 */}
                                 <div className="hidden sm:block w-px h-8 bg-gray-300 mx-1"></div>
 
-                                {/* 原本的篩選選單 */}
+                                {/* 篩選選單 */}
                                 <select className="w-full sm:w-auto border-2 border-gray-300 rounded-lg px-4 py-2.5 text-sm font-bold text-gray-800 outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-600 bg-white cursor-pointer hover:bg-gray-50 transition-colors"
                                     value={filters.profession} onChange={e => setFilters({...filters, profession: e.target.value})}>
                                     <option value="全院總計">🏥 全院總計</option>
@@ -661,20 +696,22 @@
 
                     <div className="max-w-7xl mx-auto px-4 md:px-6 space-y-8 md:space-y-12">
                         
-                        {/* 🌟 智能數據洞察區塊 */}
+                        {/* 🌟 智能數據洞察區塊 (恢復 Emoji 版) */}
                         <div className="bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl shadow-lg p-5 md:p-7 text-white flex flex-col border border-blue-600">
-                            <h2 className="text-xl font-black mb-5 flex items-center gap-2 tracking-wide text-blue-50 border-b border-blue-500/50 pb-3">📊 智能數據綜合洞察報告</h2>
+                            <h2 className="text-xl font-black mb-5 flex items-center gap-2 tracking-wide text-blue-50 border-b border-blue-500/50 pb-3">
+                                📊 智能數據綜合洞察報告
+                            </h2>
                             
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5 text-sm md:text-base text-blue-100 font-bold leading-relaxed">
                                 <div className="flex items-start gap-2.5">
                                     <span className="text-yellow-400 text-lg leading-none mt-0.5">✨</span> 
-                                    <span><strong className="text-white text-[15px]">整體表現：</strong>目前範圍滿意度 <span className="text-yellow-400 text-lg mx-0.5">{currentQ5}</span> 分，{q5Comparison}。</span>
+                                    <span><strong className="text-white text-[15px]">整體表現：</strong>目前範圍滿意度 <span className="text-yellow-400 text-lg mx-0.5">{currentQ5}</span> 分，{q5ComparisonText}</span>
                                 </div>
                                 
                                 {topDriver && (
                                 <div className="flex items-start gap-2.5">
                                     <span className="text-yellow-400 text-lg leading-none mt-0.5">🎯</span> 
-                                    <span><strong className="text-white text-[15px]">關鍵驅動：</strong>「<span className="text-white">{topDriver.name.replace(/^\(.*\)\s/, '')}</span>」相關性最高(r={topDriver.val})，為提升體驗核心。</span>
+                                    <span><strong className="text-white text-[15px]">關鍵驅動（系統優化指南）：</strong>數據顯示，目前影響整體滿意度的最大關鍵是「<span className="text-white">{topDriver.name.replace(/^\(.*\)\s/, '')}</span>」。建議下一階段的系統改版，將資源優先投資於此項目，這將會是讓大家最有感、投資報酬率最高的優化方向。</span>
                                 </div>
                                 )}
                                 
@@ -750,16 +787,23 @@
                         <section>
                             <h2 className="text-xl md:text-2xl font-black border-l-8 border-blue-600 pl-4 mb-5 text-gray-900">區塊二：關鍵驅動與分層解析</h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6">
-                                <div className="dashboard-card p-5 md:p-6 min-h-[350px] md:h-[380px] flex flex-col">
-                                    <div className="text-lg font-black text-gray-900 mb-1">滿意度關鍵驅動因子 <span className="text-sm font-bold text-gray-500 ml-2">(Top 3)</span></div>
-                                    <div className="text-sm font-bold text-gray-500 mb-4">數值越高代表該項目越能帶動「整體滿意度」的提升</div>
+                                <div className="dashboard-card p-5 md:p-6 min-h-[350px] md:h-[430px] flex flex-col">
+                                    <div className="text-lg font-black text-gray-900 mb-2">滿意度關鍵驅動因子 <span className="text-sm font-bold text-gray-500 ml-2">(Top 3)</span></div>
+                                    <div className="text-sm font-bold text-gray-600 mb-4 leading-relaxed bg-gray-50 p-3.5 rounded-xl border border-gray-200">
+                                        <div className="text-blue-700 font-black mb-1">💡 說明：滿意度的火車頭在哪裡？</div>
+                                        數值 (r) 越接近 1，代表大家「越在乎」。若優化資源有限，請優先處理榜上項目！
+                                        <div className="text-red-700 mt-1.5 font-black">
+                                            (⚠️ 注意：長條圖越長代表「影響力」越高，不代表「現況滿意度」高。若上榜項目目前分數偏低，即為最需優先搶救的核心痛點！)
+                                        </div>
+                                    </div>
                                     <div className="flex-grow min-h-0">
                                         <ReactECharts option={driverOption} />
                                     </div>
                                 </div>
-                                <div className="dashboard-card p-5 md:p-6 min-h-[350px] md:h-[380px] flex flex-col">
-                                    <div className="text-lg font-black text-gray-900 mb-1">使用頻率分層滿意度</div>
-                                    <div className="text-sm font-bold text-gray-500 mb-4">檢視「越常用是否越滿意」(系統黏著度診斷)</div>
+                                <div className="dashboard-card p-5 md:p-6 min-h-[350px] md:h-[430px] flex flex-col">
+                                    <div className="text-lg font-black text-gray-900 mb-2">使用頻率分層滿意度</div>
+                                    <div className="text-sm font-bold text-gray-500 mb-3">檢視「越常用是否越滿意」(系統黏著度診斷)</div>
+                                    
                                     <div className="flex-grow min-h-0">
                                         <ReactECharts option={segmentationOption} />
                                     </div>
@@ -1009,7 +1053,12 @@
                                             });
 
                                             if (listData.length === 0) {
-                                                return <div className="text-gray-400 text-center py-16 mt-8 flex flex-col items-center"><div className="text-5xl mb-4 opacity-30">📭</div><span className="font-bold text-lg">目前無符合條件之留言</span></div>;
+                                                return (
+                                                    <div className="text-gray-400 text-center py-16 mt-8 flex flex-col items-center">
+                                                        <span className="text-5xl mb-4 opacity-30">📭</span>
+                                                        <span className="font-bold text-lg">目前無符合條件之留言</span>
+                                                    </div>
+                                                );
                                             }
 
                                             return listData.map((d, i) => (
@@ -1029,7 +1078,7 @@
 
                     </div>
 
-                    {/* 🌟 新增：頁尾版權宣告 */}
+                    {/* 🌟 頁尾版權宣告 */}
                     <footer className="text-center py-8 mt-12 border-t-2 border-gray-200 text-sm font-bold text-gray-400">
                         © 2026 Chi Mei Medical Center. All Rights Reserved.
                     </footer>
